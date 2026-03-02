@@ -18,9 +18,18 @@ export default function HowSection() {
   const content = {
     pt: {
       badge: "Como Fazemos",
-      title1: "Método",
+      title1: "Nosso Método",
       title2: "GLX",
       cta: "Começar Transformação",
+      dashboard: {
+        subtitle: "Painel Executivo",
+        live: "Ao vivo",
+        revenue: "Receita",
+        noShow: "No-show",
+        conversion: "Conversão",
+        revenueVsCost: "Faturamento x Custo",
+        realtimeFlow: "Fluxo em Tempo Real",
+      },
       steps: [
         {
           step: "01",
@@ -46,57 +55,75 @@ export default function HowSection() {
     },
     en: {
       badge: "How We Do It",
-      title1: "The",
-      title2: "GLX Method",
-      cta: "Start Transformation",
+      title1: "Our Method",
+      title2: "GLX",
+      cta: "Request a Diagnostic Sprint",
+      dashboard: {
+        subtitle: "Executive Dashboard",
+        live: "Live",
+        revenue: "Revenue",
+        noShow: "No-show",
+        conversion: "Conversion",
+        revenueVsCost: "Revenue vs Cost",
+        realtimeFlow: "Real-Time Flow",
+      },
       steps: [
         {
           step: "01",
           title: "Data-Based Diagnosis",
-          desc: "We map the clinic's operational truth to understand where money is leaking.",
+          desc: "We audit the operation end to end to uncover margin leakage and the bottlenecks that block growth.",
         },
         {
           step: "02",
           title: "Setup & Implementation",
-          desc: "We install the processes, dashboards, and automations needed for operations to run.",
+          desc: "We install processes, dashboards, and automations so the operation runs with predictability. We apply AI to capture data, trigger alerts, and recommend actions—reducing rework and accelerating decisions.",
         },
         {
           step: "03",
           title: "Execution & Sprints",
-          desc: "Weekly management routine. Goal tracking and quick course correction.",
+          desc: "Weekly management cadence with clear targets, defined owners, and data-driven course correction. Weekly priorities, fast decisions, and tracking of impact on revenue, capacity, and margin.",
         },
         {
           step: "04",
-          title: "Continuous Management / Partners",
-          desc: "Long-term follow-up to ensure sustainable scale and new levels.",
+          title: "Management / Partnership",
+          desc: "Ongoing support to sustain performance, protect margin, and scale with predictability—quarter after quarter. Governance of KPIs, priorities, and capacity allocation to keep the team aligned and results at high performance.",
         },
       ],
     },
     es: {
       badge: "Cómo Lo Hacemos",
-      title1: "Método",
+      title1: "Nuestro Método",
       title2: "GLX",
-      cta: "Iniciar Transformación",
+      cta: "AGENDAR SPRINT DIAGNÓSTICA",
+      dashboard: {
+        subtitle: "Panel Ejecutivo",
+        live: "En vivo",
+        revenue: "Ingresos",
+        noShow: "No-show",
+        conversion: "Conversión",
+        revenueVsCost: "Ingresos vs Costo",
+        realtimeFlow: "Flujo en Tiempo Real",
+      },
       steps: [
         {
           step: "01",
-          title: "Diagnóstico Basado en Datos",
-          desc: "Mapeamos la verdad operacional de la clínica para entender dónde se está fugando el dinero.",
+          title: "Diagnóstico basado en datos",
+          desc: "Auditamos la operación de punta a punta para revelar fugas de margen y los cuellos de botella que frenan el crecimiento.",
         },
         {
           step: "02",
-          title: "Setup e Implementación",
-          desc: "Instalamos los procesos, dashboards y automatizaciones necesarias para que la operación funcione.",
+          title: "Setup & Implementación",
+          desc: "Instalamos procesos, dashboards y automatizaciones para que la operación funcione con previsibilidad. Aplicamos IA para capturar datos, generar alertas y recomendar acciones — reduciendo retrabajo y acelerando decisiones.",
         },
         {
           step: "03",
           title: "Ejecución & Sprints",
-          desc: "Rutina de gestión semanal. Seguimiento de metas y corrección de rumbo rápida.",
+          desc: "Cadencia semanal de gestión con metas claras, responsables definidos y corrección de ruta basada en datos. Prioridades de la semana, decisiones rápidas y seguimiento del impacto en ingresos, capacidad y margen.",
         },
         {
           step: "04",
-          title: "Gestión Continua / Partners",
-          desc: "Acompañamiento a largo plazo para garantizar escala sostenible y nuevos niveles.",
+          title: "Gestión Continua / Partnership",
+          desc: "Acompañamiento recurrente para sostener performance, proteger margen y escalar con previsibilidad—trimestre tras trimestre. Gobernanza de KPIs, prioridades y asignación de capacidad para mantener al equipo alineado y el resultado en alta performance.",
         },
       ],
     },
@@ -132,14 +159,13 @@ export default function HowSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full border border-orange-500/20 bg-orange-500/10 mb-6"
+            className="glx-pill-shell mb-6 inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1"
           >
-            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
             <SplitText
               text={t.badge}
               tag="h2"
               splitType="words"
-              className="text-orange-500 font-bold tracking-[0.2em] uppercase text-xs"
+              className="glx-pill-text"
               delay={18}
               duration={0.35}
               threshold={0.2}
@@ -314,24 +340,24 @@ export default function HowSection() {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h4 className="text-lg font-semibold tracking-tight text-white">GLX Control Tower</h4>
-                  <p className="text-sm text-white/55">Painel Executivo</p>
+                  <p className="text-sm text-white/55">{t.dashboard.subtitle}</p>
                 </div>
                 <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-200">
-                  Live
+                  {t.dashboard.live}
                 </span>
               </div>
 
               <div className="mb-4 grid grid-cols-3 gap-2">
                 <div className="rounded-lg border border-white/10 bg-black/20 p-2.5">
-                  <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">Receita</div>
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">{t.dashboard.revenue}</div>
                   <div className="mt-1 text-lg font-bold text-cyan-300">R$ 2.4M</div>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/20 p-2.5">
-                  <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">No-show</div>
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">{t.dashboard.noShow}</div>
                   <div className="mt-1 text-lg font-bold text-orange-300">18.3%</div>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/20 p-2.5">
-                  <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">Conversão</div>
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">{t.dashboard.conversion}</div>
                   <div className="mt-1 text-lg font-bold text-emerald-300">81.7%</div>
                 </div>
               </div>
@@ -340,7 +366,7 @@ export default function HowSection() {
                 <div className="group/table rounded-lg border border-white/10 bg-black/20 p-3 transition-colors duration-250 hover:border-cyan-300/45 hover:bg-cyan-400/[0.06]">
                   <div className="mb-2 flex items-center gap-2">
                     <span className="h-0 w-0 border-l-[5px] border-r-[5px] border-b-[8px] border-l-transparent border-r-transparent border-b-cyan-300/80 transition-colors group-hover/table:border-b-cyan-200" />
-                    <div className="text-xs uppercase tracking-[0.12em] text-white/60">Faturamento x Custo</div>
+                    <div className="text-xs uppercase tracking-[0.12em] text-white/60">{t.dashboard.revenueVsCost}</div>
                   </div>
                   <div className="flex h-28 items-end gap-2">
                     {[36, 55, 48, 68, 74].map((h, i) => (
@@ -356,7 +382,7 @@ export default function HowSection() {
                 <div className="group/table rounded-lg border border-white/10 bg-black/20 p-3 transition-colors duration-250 hover:border-emerald-300/45 hover:bg-emerald-400/[0.06]">
                   <div className="mb-2 flex items-center gap-2">
                     <span className="h-0 w-0 border-l-[5px] border-r-[5px] border-b-[8px] border-l-transparent border-r-transparent border-b-emerald-300/80 transition-colors group-hover/table:border-b-emerald-200" />
-                    <div className="text-xs uppercase tracking-[0.12em] text-white/60">Fluxo em Tempo Real</div>
+                    <div className="text-xs uppercase tracking-[0.12em] text-white/60">{t.dashboard.realtimeFlow}</div>
                   </div>
                   <svg viewBox="0 0 210 110" className="h-28 w-full">
                     <path d="M8 78 L42 66 L74 50 L108 44 L142 58 L176 70 L202 62" fill="none" stroke="rgba(52,211,153,0.9)" strokeWidth="3" strokeLinecap="round" />

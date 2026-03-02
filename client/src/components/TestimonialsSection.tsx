@@ -181,8 +181,7 @@ export default function TestimonialsSection() {
           transition={{ duration: 0.35, ease: "easeOut" }}
           className="mb-5 flex justify-center"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+          <span className="glx-pill-shell glx-pill-text inline-flex items-center gap-2 rounded-full border px-4 py-2">
             {headerCopy.eyebrow}
           </span>
         </m.div>

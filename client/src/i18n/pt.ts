@@ -3,10 +3,10 @@ export const pt = {
   nav: {
     about: "A GLX",
     services: "O Que Fazemos",
-    plans: "Planos",
+    plans: "Nossos Planos",
     cases: "Cases",
     membersArea: "ÁREA DE MEMBROS",
-    schedule: "AGENDAR DIAGNÓSTICO",
+    schedule: "AGENDAR SPRINT DIAGNOSTICA",
   },
 
   // Hero Section
@@ -18,8 +18,8 @@ export const pt = {
     subtitle: "Transformamos sua operação em",
     subtitleHighlight: "Lucro Líquido Previsível",
     description: "Dashboards + Rotina de Gestão + Processos + Automações + IA + Treinamento + Metas. Tudo integrado em um único sistema.",
-    cta: "AGENDAR DIAGNÓSTICO",
-    secondary: "VER CASES",
+    cta: "AGENDAR SPRINT DIAGNOSTICA",
+    secondary: "VER NOSSOS CASES",
   },
 
   // Impact Section

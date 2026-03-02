@@ -12,23 +12,23 @@ export default function ResultsSection() {
       subtitle:
         "A Sprint Diagnóstica começa com uma conversa. Sem formulários longos, sem apresentação genérica. Você fala do seu cenário — a gente te diz o que os dados da sua especialidade mostram.",
       cta: "AGENDAR SPRINT DIAGNÓSTICA",
-      note: "Disponível para clínicas acima de R$ 100K/mês",
+      note: "Disponível para clínicas com faturamento acima de R$ 100K/mês",
     },
     en: {
       eyebrow: "NEXT STEP",
-      title: "Ready to scale with predictability?",
+      title: "In 30 minutes, you’ll know where the leakage is.",
       subtitle:
-        "If you want clarity on where the biggest margin and capacity gains are in your operation, schedule an Executive Diagnosis.",
-      cta: "Schedule Now",
-      note: "Initial 30-minute diagnosis.",
+        "The Diagnostic Sprint starts with a conversation—no long forms, no generic deck. You share your context; we tell you what the data for your specialty typically shows.",
+      cta: "BOOK A DIAGNOSTIC SPRINT",
+      note: "Available for clinics with incomes up to USD$ 20K/mo",
     },
     es: {
       eyebrow: "SIGUIENTE PASO",
-      title: "¿Listo para escalar con previsibilidad?",
+      title: "En 30 minutos, sabes dónde está la fuga.",
       subtitle:
-        "Si quieres claridad sobre dónde están las mayores ganancias de margen y capacidad en tu operación, agenda un Diagnóstico Ejecutivo.",
-      cta: "Agendar Ahora",
-      note: "Diagnóstico inicial de 30 minutos.",
+        "El Sprint Diagnóstico comienza con una conversación ejecutiva: sin formularios interminables ni presentaciones genéricas. Nos das tu contexto y tus números; nosotros devolvemos, en el acto, los hallazgos típicos de tu especialidad. Sales con prioridades claras, quick wins y un plan de ejecución para las próximas semanas.",
+      cta: "AGENDAR SPRINT DIAGNÓSTICA",
+      note: "Disponible para clínicas con ingresos mayores a USD$ 20K/mes",
     },
   } as const;
 
@@ -55,9 +55,8 @@ export default function ResultsSection() {
           />
 
           <div className="relative z-10 mx-auto max-w-4xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
-              <span>{t.eyebrow}</span>
+            <div className="glx-pill-shell mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2">
+              <span className="glx-pill-text">{t.eyebrow}</span>
             </div>
             <h2 className="mb-8 text-3xl font-extrabold leading-[1.1] tracking-tight text-white md:text-5xl lg:text-6xl">
               <span className="mx-auto block text-center">{t.title}</span>

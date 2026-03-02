@@ -60,51 +60,75 @@ const whyMetaByLanguage: Record<"pt" | "en" | "es", WhyMeta> = {
       },
     ],
   },
-  en: {
-    labelWhat: "What you get",
-    labelHow: "How it works",
-    cards: [
+    en: {
+      labelWhat: "How your clinic operates today",
+      labelHow: "How this appears in the routine",
+      cards: [
+        {
+          whatLabel: "How your clinic operates today",
+          howLabel: "How this appears in the routine",
+          what:
+            "Management by intuition and bank statements.\nNo-show with no recovery protocol.\nLeads waiting hours for a reply.\nHigh-volume services with negative margins.\nYou at the center of every decision.\nGrowth that requires more effort.",
+          how:
+            "The operation sells, but loses margin and predictability. Cash comes in—yet part of it leaks through no-shows, slow response, and ownerless processes.",
+          microTitle: "Current State",
+          microSubtitle: "Where profit is lost",
+        },
       {
-        what: "Predictable pipeline with qualified demand and controlled CAC.",
-        how: "Offer + messaging + funnel + weekly conversion cadence.",
-        microTitle: "Growth Loop",
-        microSubtitle: "Acquisition -> Conversion -> Revenue",
+        whatLabel: "Benefits with GLX Partners",
+        howLabel: "Execution partnership",
+        what:
+          "Executive dashboard with data-driven decisions.\nProtocol that reduces no-show by 40%.\nResponse SLA under 1 hour.\nMargin map by procedure and physician.\nThe team runs on the system—not on you.\nWeekly targets and sprints for predictable growth.",
+        how:
+          "The operation stops depending on you and becomes a system. No-shows drop, response accelerates, and margin becomes visible. Result: governance, predictability, and controlled growth.",
+        microTitle: "GLX State",
+        microSubtitle: "Operation with capture",
       },
       {
-        what: "Lean operations with less queueing and less rework.",
-        how: "Bottleneck diagnosis + process standardization + improvement rituals.",
-        microTitle: "Lean Flow",
-        microSubtitle: "Cycle Time | Capacity | NPS",
-      },
-      {
-        what: "Automation of repetitive work without inflating headcount.",
-        how: "Repetition mapping + automation/agents + execution monitoring.",
-        microTitle: "AI Ops",
-        microSubtitle: "Automations + alerts + handoff",
+        whatLabel: "Methodology",
+        howLabel: "Delivery",
+        what:
+          "Growth Strategy + Lean Six Sigma + AI\n\nCertified by the leading Lean Health and Six Sigma councils worldwide.",
+        how:
+          "Execution. Not only strategy.\n\nStrategy is only the beginning. What we deliver is working results.",
+        microTitle: "GLX Architecture",
+        microSubtitle: "Method + execution",
       },
     ],
   },
   es: {
-    labelWhat: "What you get",
-    labelHow: "How it works",
+    labelWhat: "Cómo opera tu clínica hoy",
+    labelHow: "Cómo aparece en la rutina",
     cards: [
       {
-        what: "Pipeline predecible con demanda calificada y CAC controlado.",
-        how: "Oferta + mensaje + embudo + rutina semanal de conversion.",
-        microTitle: "Growth Loop",
-        microSubtitle: "Adquisicion -> Conversion -> Ingresos",
+        whatLabel: "Cómo opera tu clínica hoy",
+        howLabel: "Cómo aparece en la rutina",
+        what:
+          "Gestión por intuición y extracto bancario.\nNo-show sin protocolo de recuperación.\nLeads esperando horas por respuesta.\nServicios de alto volumen con margen negativo.\nTú en el centro de cada decisión.\nCrecimiento que depende de más esfuerzo.",
+        how:
+          "La operación vende, pero pierde margen y previsibilidad. El dinero entra, pero parte se fuga por no-shows, demora de respuesta y procesos sin dueño.",
+        microTitle: "Estado actual",
+        microSubtitle: "Dónde se pierde el lucro",
       },
       {
-        what: "Operacion mas lean, menos filas y menos retrabajo.",
-        how: "Diagnostico de cuellos + estandarizacion + rituales de mejora.",
-        microTitle: "Lean Flow",
-        microSubtitle: "Tiempo de ciclo | Capacidad | NPS",
+        whatLabel: "Beneficios con GLX Partners",
+        howLabel: "Alianza de ejecución",
+        what:
+          "Dashboard ejecutivo con decisiones basadas en datos.\nProtocolo que reduce el no-show en 40%.\nSLA de respuesta por debajo de 1 hora.\nMapa de margen por procedimiento y médico.\nEl equipo opera por sistema, no por ti.\nMetas y sprints semanales para crecimiento predecible.",
+        how:
+          "La operación deja de depender de ti y se convierte en sistema. Baja el no-show, acelera el tiempo de respuesta y aparece el margen.\nResultado: gobernanza, previsibilidad y crecimiento con control.",
+        microTitle: "Estado GLX",
+        microSubtitle: "Operación con captura",
       },
       {
-        what: "Automatizacion de tareas repetitivas sin inflar el equipo.",
-        how: "Mapa de repeticion + agentes/automatizaciones + control.",
-        microTitle: "AI Ops",
-        microSubtitle: "Automatizaciones + alerts + handoff",
+        whatLabel: "Metodología",
+        howLabel: "Entrega",
+        what:
+          "Growth Strategy + Lean Six Sigma + IA\n\nCertificados por los principales consejos de Lean Health y Six Sigma del mundo.",
+        how:
+          "Ejecución. No solo estrategia.\n\nLa estrategia es solo el comienzo. Lo que entregamos es resultado funcionando.",
+        microTitle: "Arquitectura GLX",
+        microSubtitle: "Método + ejecución",
       },
     ],
   },
@@ -223,7 +247,7 @@ function nonEmptyLines(text: string) {
 }
 
 export default function WhySection() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const sectionRef = useRef<HTMLElement>(null);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const capabilities = useMotionCapabilities();
@@ -236,43 +260,99 @@ export default function WhySection() {
     offset: ["start end", "end start"],
   });
   const meta = whyMetaByLanguage[language];
-  const sectionCopy =
-    language === "pt"
-      ? {
-          title1: "Você já tem o ativo.",
-          title2: "Falta o sistema que o monetiza.",
-          subtitle:
-            "A maioria das clínicas privadas de alto padrão não tem problema de demanda. Tem problema de captura: o dinheiro existe na operação, mas vaza silenciosamente — em no-show sem protocolo, em leads que demoram horas para receber resposta, em serviços com margem negativa que ninguém mapeou.",
-        }
-      : {
-          title1: t.why.whyTitle1,
-          title2: t.why.whyTitle2,
-          subtitle: t.why.whySubtitle,
-        };
-  const items =
-    language === "pt"
-      ? [
-          {
-            title: "Como sua clínica opera hoje",
-            desc: "Operação dependente de você, com vazamentos silenciosos e margem sem previsibilidade.",
-          },
-          {
-            title: "Como opera com a GLX Partners",
-            desc: "Sistema integrado, execução disciplinada e crescimento com previsibilidade.",
-          },
-          {
-            title: "Metodologia + Entrega",
-            desc: "Growth Strategy + Lean Six Sigma + IA.\nExecução. Não só estratégia.",
-          },
-        ]
-      : [
-          { title: t.why.whyItem1Title, desc: t.why.whyItem1Desc },
-          { title: t.why.whyItem2Title, desc: t.why.whyItem2Desc },
-          { title: t.why.whyItem3Title, desc: t.why.whyItem3Desc },
-        ];
-  const visibleItems = language === "pt" ? items.slice(0, 2) : items;
+  const comparisonCopyByLanguage = {
+    pt: {
+      badge: "O que nos diferencia na GLX Partners",
+      title1: "Você já tem o ativo.",
+      title2: "Falta o sistema que o monetiza.",
+      subtitle:
+        "A maioria das clínicas privadas de alto padrão não tem problema de demanda. Tem problema de captura: o dinheiro existe na operação, mas vaza silenciosamente — em no-show sem protocolo, em leads que demoram horas para receber resposta, em serviços com margem negativa que ninguém mapeou.\n\nA operação deixa de depender de você e vira sistema.\nNo-show cai, resposta acelera e a margem aparece.\nResultado: governança, previsibilidade e crescimento com controle.",
+      badgeBefore: "Antes",
+      badgeAfter: "Depois com a GLX",
+      summaryBefore: "Impacto na rotina",
+      summaryAfter: "O que muda com a GLX",
+    },
+    en: {
+      badge: "What makes GLX Partners different",
+      title1: "You already have the asset.",
+      title2: "What’s missing is the system that monetizes it.",
+      subtitle:
+        "Most premium private clinics don’t have a demand problem—they have a capture problem. The money is in the operation, but it leaks quietly: no-shows without protocol, leads waiting hours for a response, and high-volume services with negative margins no one mapped.\n\nThe operation stops depending on you and becomes a system. No-shows drop, response times accelerate, and margin becomes visible. Result: governance, predictability, and controlled growth.",
+      badgeBefore: "Before",
+      badgeAfter: "With GLX Partners",
+      summaryBefore: "Impact on the routine",
+      summaryAfter: "What changes with GLX",
+    },
+    es: {
+      badge: "Qué nos diferencia en GLX Partners",
+      title1: "Ya tienes el activo.",
+      title2: "Falta el sistema que lo monetiza.",
+      subtitle:
+        "La mayoría de las clínicas privadas premium no tiene un problema de demanda; tiene un problema de captura. El dinero está en la operación, pero se fuga en silencio: no-shows sin protocolo, leads que esperan horas por respuesta y servicios de alto volumen con margen negativo que nadie mapeó. La operación deja de depender de ti y se convierte en sistema. Baja el no-show, se acelera la respuesta y aparece el margen. Resultado: gobernanza, previsibilidad y crecimiento con control.",
+      badgeBefore: "Antes",
+      badgeAfter: "Después",
+      summaryBefore: "Impacto en la rutina",
+      summaryAfter: "Qué cambia con GLX",
+    },
+  } as const;
+  const comparisonCopy = comparisonCopyByLanguage[language];
+  const sectionCopyByLanguage = {
+    pt: {
+      title1: "Você já tem o ativo.",
+      title2: "Falta o sistema que o monetiza.",
+      subtitle:
+        "A maioria das clínicas privadas de alto padrão não tem problema de demanda. Tem problema de captura: o dinheiro existe na operação, mas vaza silenciosamente — em no-show sem protocolo, em leads que demoram horas para receber resposta, em serviços com margem negativa que ninguém mapeou.",
+    },
+    en: {
+      title1: "You already have the asset.",
+      title2: "What is missing is the system to monetize it.",
+      subtitle:
+        "Most premium private clinics do not have a demand problem. They have a capture problem: money exists in the operation, but leaks silently through no-show without protocol, leads that take hours to get a response, and services with negative margin that no one mapped.",
+    },
+    es: {
+      title1: "Ya tienes el activo.",
+      title2: "Falta el sistema que lo monetiza.",
+      subtitle:
+        "La mayoría de las clínicas privadas de alto estándar no tiene un problema de demanda. Tiene un problema de captura: el dinero existe en la operación, pero se fuga silenciosamente en no-show sin protocolo, en leads que tardan horas en recibir respuesta y en servicios con margen negativo que nadie mapeó.",
+    },
+  } as const;
+  const sectionCopy = sectionCopyByLanguage[language];
+  const itemsByLanguage = {
+    pt: [
+      {
+        title: "Como sua clínica opera hoje",
+        desc: "Operação dependente de você, com vazamentos silenciosos e margem sem previsibilidade.",
+      },
+      {
+        title: "Como opera com a GLX Partners",
+        desc: "Sistema integrado, execução disciplinada e crescimento com previsibilidade.",
+      },
+    ],
+    en: [
+      {
+        title: "How your clinic operates today",
+        desc: "An owner-dependent operation, with silent leakage\nand unpredictable margins.",
+      },
+      {
+        title: "How it runs with GLX Partners",
+        desc: "An integrated system, disciplined execution,\nand predictable growth.",
+      },
+    ],
+    es: [
+      {
+        title: "Cómo opera tu clínica hoy",
+        desc: "La operación dependiente de ti, con fugas silenciosas y margen sin previsibilidad.",
+      },
+      {
+        title: "Cómo opera con GLX Partners",
+        desc: "Actua como un sistema integrado, ejecución disciplinada y crecimiento con previsibilidad.",
+      },
+    ],
+  } as const;
+  const items = itemsByLanguage[language];
+  const visibleItems = items.slice(0, 2);
   const visibleMetaCards = meta.cards.slice(0, visibleItems.length);
-  const isPtComparisonOnly = language === "pt";
+  const isPtComparisonOnly = true;
 
   const parallaxRange = reducedMotion ? 0 : capabilities.motionLevel === "full" ? 12 : 8;
   const accentY0 = useTransform(smoothProgress, [0, 1], [-parallaxRange * 0.15, parallaxRange * 0.85]);
@@ -405,10 +485,7 @@ export default function WhySection() {
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="mb-6 flex justify-center"
             >
-              <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-orange-300 sm:text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
-                O que nos diferencia na GLX Partners
-              </span>
+              <span className="glx-pill-shell glx-pill-text inline-flex items-center gap-2 rounded-full border px-4 py-2">{comparisonCopy.badge}</span>
             </m.div>
 
             <m.h2
@@ -418,9 +495,9 @@ export default function WhySection() {
               transition={{ duration: 0.45, ease: "easeOut" }}
               className="mb-6 text-3xl font-extrabold leading-[1.1] tracking-tight text-white md:text-5xl"
             >
-              <span className="block">Você já tem o ativo.</span>
+              <span className="block">{comparisonCopy.title1}</span>
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60">
-                Falta o sistema que o monetiza.
+                {comparisonCopy.title2}
               </span>
             </m.h2>
 
@@ -431,11 +508,7 @@ export default function WhySection() {
               transition={{ delay: 0.06, duration: 0.45, ease: "easeOut" }}
               className="mx-auto max-w-4xl whitespace-pre-line text-center text-base font-light leading-relaxed text-gray-300 md:text-xl"
             >
-              {`A maioria das clínicas privadas de alto padrão não tem problema de demanda. Tem problema de captura: o dinheiro existe na operação, mas vaza silenciosamente — em no-show sem protocolo, em leads que demoram horas para receber resposta, em serviços com margem negativa que ninguém mapeou.
-
-A operação deixa de depender de você e vira sistema.
-No-show cai, resposta acelera e a margem aparece.
-Resultado: governança, previsibilidade e crescimento com controle.`}
+              {comparisonCopy.subtitle}
             </m.p>
           </div>
         ) : null}
@@ -456,12 +529,12 @@ Resultado: governança, previsibilidade e crescimento com controle.`}
             const dimmed = hoveredCardIndex !== null && hoveredCardIndex !== index;
             const large = false;
             const isPtBeforeAfterCard = isPtComparisonOnly && index < 2;
-            const comparisonBadge = index === 0 ? "Antes" : "Depois com a GLX";
+            const comparisonBadge = index === 0 ? comparisonCopy.badgeBefore : comparisonCopy.badgeAfter;
             const comparisonBadgeClass =
               index === 0
                 ? "border-orange-400/25 bg-orange-500/10 text-orange-200/90"
                 : "border-cyan-300/20 bg-cyan-400/8 text-cyan-100/85";
-            const comparisonSummaryLabel = index === 0 ? "Impacto na rotina" : "O que muda com a GLX";
+            const comparisonSummaryLabel = index === 0 ? comparisonCopy.summaryBefore : comparisonCopy.summaryAfter;
             const whatLines = nonEmptyLines(cardMeta.what);
 
             return (
@@ -481,6 +554,7 @@ Resultado: governança, previsibilidade e crescimento com controle.`}
                     "group relative h-full overflow-hidden rounded-2xl border bg-[#101114]/82 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.24)] backdrop-blur-md transition-[border-color,box-shadow,background-color] duration-[220ms] md:p-8",
                     "border-white/10 hover:border-orange-400/35 hover:shadow-[0_18px_36px_rgba(0,0,0,0.28)]",
                     active && "border-orange-400/40 shadow-[0_20px_40px_rgba(0,0,0,0.32)]",
+                    isPtBeforeAfterCard && "pt-8 md:pt-10",
                   )}
                 >
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.028),rgba(255,255,255,0.008)_52%,rgba(255,255,255,0.004))]" />

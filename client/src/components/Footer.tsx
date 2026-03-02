@@ -31,7 +31,7 @@ export default function Footer() {
       menuItems: {
         about: "A GLX",
         services: "O Que Fazemos",
-        method: "Método",
+        method: "Nosso Método",
         cases: "Cases"
       },
       contact: "Contato",
@@ -41,27 +41,27 @@ export default function Footer() {
       terms: "Termos"
     },
     en: {
-      description: "Growth and Operational Efficiency Consulting specialized in the healthcare sector. We combine Strategy, Lean, and Technology.",
+      description: "Premium growth and operational efficiency consulting for healthcare companies. We combine strategy, Lean, technology, and AI to turn performance into routine — with margin and predictability.",
       menu: "Menu",
       menuItems: {
         about: "About GLX",
         services: "What We Do",
-        method: "Method",
+        method: "Our Method",
         cases: "Cases"
       },
       contact: "Contact",
-      scheduleBtn: "Schedule Meeting",
+      scheduleBtn: "BOOK A DIAGNOSTIC CALL",
       copyright: "2026 GLX Partners Enablement LTDA. CNPJ 63944929/000199. All rights reserved.",
       privacy: "Privacy",
       terms: "Terms"
     },
     es: {
-      description: "Consultoría de Crecimiento y Eficiencia Operacional especializada en el sector salud. Unimos Estrategia, Lean y Tecnología.",
+      description: "Consultoría premium de crecimiento y eficiencia operativa para empresas de salud. Unimos estrategia, Lean, tecnología e IA para convertir performance en rutina—con margen y previsibilidad.",
       menu: "Menú",
       menuItems: {
         about: "GLX",
         services: "Qué Hacemos",
-        method: "Método",
+        method: "Nuestro Método",
         cases: "Casos"
       },
       contact: "Contacto",
@@ -103,11 +103,13 @@ export default function Footer() {
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="col-span-1 md:col-span-2"
           >
-            <img 
-              src="/images/logo-white-on-black.jpg" 
-              alt="GLX Partners" 
-              className="mb-8 h-24 w-24 rounded-lg object-cover mix-blend-screen md:h-32 md:w-32"
-            />
+            <a href="/#home" className="inline-flex">
+              <img
+                src="/images/logo-white-on-black.jpg"
+                alt="GLX Partners"
+                className="mb-8 h-24 w-24 rounded-lg object-cover mix-blend-screen md:h-32 md:w-32"
+              />
+            </a>
             <p className="mb-6 max-w-sm text-muted-foreground">
               {t.description}
             </p>

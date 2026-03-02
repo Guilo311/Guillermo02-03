@@ -79,9 +79,9 @@ const HERO_COPY = {
     ],
   },
   en: {
-    problemLines: ["Your clinic bills well.", "Profit disappears.", "We know where."],
-    body: "We install the system that turns your clinic operation into predictable profit with real data, process discipline and execution that does not depend on you being present all the time.",
-    ctaNote: "→ 30 min. No commitment. With data from your market.",
+    problemLines: ["Your clinic generates strong revenue.", "Profit disappears.", "We know exactly where."],
+    body: "We install the operating system that turns your clinic’s operation into predictable profit—using real data, working processes, and execution that doesn’t depend on you being present.",
+    ctaNote: "→ 30 min. No commitment. Powered by real data from your market.",
     stats: [
       { value: "3x", label: "Average ROI in 12 months" },
       { value: "-40%", label: "Average no-show" },
@@ -90,9 +90,9 @@ const HERO_COPY = {
     ],
   },
   es: {
-    problemLines: ["Tu clínica factura bien.", "La utilidad se pierde.", "Sabemos dónde."],
-    body: "Instalamos el sistema que convierte la operación de tu clínica en utilidad predecible con datos reales, procesos que funcionan y ejecución que no depende de tu presencia constante.",
-    ctaNote: "→ 30 min. Sin compromiso. Con datos de tu mercado.",
+    problemLines: ["Tu clínica factura bien.", "El lucro se evapora.", "Sabemos exactamente dónde."],
+    body: "Instalamos el sistema que convierte la operación de tu clínica en lucro predecible — con datos reales, procesos que funcionan y una ejecución que no depende de tu presencia constante.",
+    ctaNote: "→ 30 min. Sin compromiso. Basado em dados reales de tu mercado.",
     stats: [
       { value: "3x", label: "ROI medio en 12 meses" },
       { value: "-40%", label: "No-show medio" },
@@ -168,7 +168,7 @@ export default function Hero() {
   return (
     <section
       ref={sectionRef}
-      id="hero"
+      id="home"
       className="relative flex min-h-screen items-center overflow-hidden bg-[#050608] pb-16 pt-24 md:pb-20 md:pt-36"
     >
       {/* ── Video Background ── */}
@@ -239,11 +239,11 @@ export default function Hero() {
             {/* Badge */}
             <m.div
               variants={fadeUp}
-              className="mb-7 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 backdrop-blur-md"
+              className="glx-pill-shell mb-7 inline-flex items-center gap-3 rounded-full border px-5 py-2.5 backdrop-blur-md"
             >
-              <span className="h-[1px] w-8 bg-gradient-to-r from-orange-500 to-orange-300" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-300/90">
-                {t.hero.badge}
+              <span className="glx-pill-line h-[1px] w-8" />
+              <span className="glx-pill-text">
+                {language === "en" ? "Healthcare Performance Consulting" : t.hero.badge}
               </span>
             </m.div>
 

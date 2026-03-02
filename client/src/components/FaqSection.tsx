@@ -29,7 +29,7 @@ export default function FaqSection() {
         {
           question: "Como funciona o diagnóstico inicial?",
           answer:
-            "O GLX Control Tower é sua camada de governança executiva: um painel único que consolida demanda, capacidade, conversão, margem e caixa com alertas e prioridades acionáveis — para você identificar desvios cedo, corrigir a rota com cadência e escalar com previsibilidade, sem vazamento de margem e sem operar no escuro.",
+            "O diagnóstico inicial é uma conversa executiva de 30 minutos, guiada por dados, capacidade e processos. Mapeamos rapidamente gargalos e vazamentos de margem que limitam escala e previsibilidade. Você sai com prioridades claras e um plano de ação objetivo para as próximas semanas.",
         },
         {
           question: "Qual a diferença entre a GLX e uma agência de marketing?",
@@ -47,7 +47,7 @@ export default function FaqSection() {
             "Implementamos. A GLX é parceiro de execução — não entregamos um relatório e desaparecemos. Trabalhamos lado a lado com seu time para instalar processos, dashboards, automações e governança. Treinamos, acompanhamos e ajustamos em sprint até o resultado virar rotina — com métricas e accountability.",
         },
         {
-          question: "O que é o Control Tower e por qué preciso dele?",
+          question: "O que é o Control Tower e por que preciso dele?",
           answer:
             "O GLX Control Tower é sua camada de governança executiva: um painel único que consolida demanda, capacidade, conversão, margem e caixa com alertas e prioridades acionáveis — para você identificar desvios cedo, corrigir a rota com cadência e escalar com previsibilidade, sem vazamento de margem e sem operar no escuro.",
         },
@@ -58,29 +58,34 @@ export default function FaqSection() {
       subtitle: "Understand how we can transform your healthcare operation.",
       faqs: [
         {
-          question: "Who is GLX Partners consulting for?",
+          question: "Who is GLX Partners for?",
           answer:
-            "Our consulting is specialized in clinics, healthtechs, and medical companies seeking accelerated growth and operational efficiency. We serve businesses that already have traction and want to scale with predictability and profit.",
+            "We work with clinics and healthtechs that already have traction and need governance to scale. We step in when the challenge is to grow without chaos: increase capacity, reduce margin leakage, and turn performance into routine. If you want predictability, profit, and disciplined execution, GLX is the implementation partner.",
         },
         {
           question: "How does the initial diagnosis work?",
           answer:
-            "We conduct a 30-minute deep analysis of your data, processes, and current structure. We identify growth bottlenecks and immediate efficiency opportunities, delivering a clear action plan.",
+            "The initial diagnostic is a 30-minute executive call grounded in data, capacity, and process. We quickly identify the bottlenecks and margin leakage limiting scale and predictability. You leave with clear priorities and an actionable plan for the next few weeks.",
         },
         {
           question: "What is the difference between GLX and a marketing agency?",
           answer:
-            "We do not just sell leads. We build complete growth systems that integrate acquisition, sales, operations, and retention. Our focus is on Predictable Net Profit, not vanity metrics.",
+            "We're not a media agency—we don't treat \"leads\" as the outcome. We implement a growth system that connects acquisition, conversion, operational capacity, and retention. The KPI isn't vanity: it's profit, margin, and predictability—with governance and weekly execution.",
         },
         {
-          question: "How long does it take to see the first results?",
+          question: "How long until we see results?",
           answer:
-            "Our methodology is designed for fast impact. In general, we identify and fix critical inefficiencies in the first 4 weeks, with measurable financial results in the first quarter.",
+            "Most of our clients see operational gains in the first 2–4 weeks (schedule, SLA, conversion). Consistent financial impact shows up over the first quarter, with margin and capacity under governance. All tracked with metrics, weekly cadence, and a clear execution plan.",
         },
         {
-          question: "Does GLX implement solutions or only recommend them?",
+          question: "Does GLX implement or just recommend?",
           answer:
-            "We are execution partners. We do not just deliver a PDF with recommendations. We work side by side with your team to implement processes, configure tools, train teams, and ensure strategy becomes reality.",
+            "We implement. GLX is an execution partner—we don't hand over a report and disappear. We work side by side with your team to install processes, dashboards, automations, and governance. We train, track, and iterate in sprints until results become routine—with metrics and accountability.",
+        },
+        {
+          question: "What is Control Tower and why do I need it?",
+          answer:
+            "The GLX Control Tower is your layer of executive governance: a single panel consolidating demand, capacity, conversion, margin, and cash with alerts and actionable priorities—so you can spot deviations early, correct course with cadence, and scale predictably, without margin leakage and without operating in the dark.",
         },
       ],
     },
@@ -89,29 +94,34 @@ export default function FaqSection() {
       subtitle: "Entiende cómo podemos transformar tu operación de salud.",
       faqs: [
         {
-          question: "¿Para quién es la consultoría de GLX Partners?",
+          question: "¿Para quién es GLX Partners?",
           answer:
-            "Nuestra consultoría está especializada en clínicas, healthtechs y empresas médicas que buscan crecimiento acelerado y eficiencia operacional. Atendemos negocios que ya tienen tracción y desean escalar con previsibilidad y beneficio.",
+            "Trabajamos con clínicas y healthtechs que ya tienen tracción y necesitan gobernanza para escalar. Entramos cuando el desafío es crecer sin caos: aumentar capacidad, reducir fugas de margen y convertir performance en rutina. Si buscas previsibilidad, lucro y ejecución disciplinada, GLX es el partner de implementación.",
         },
         {
-          question: "¿Cómo funciona el diagnóstico inicial?",
+          question: "¿Cómo funciona el diagnóstico inical?",
           answer:
-            "Realizamos un análisis profundo de 30 minutos de tus datos, procesos y estructura actual. Identificamos cuellos de botella de crecimiento y oportunidades inmediatas de eficiencia, entregando un plan de acción claro.",
+            "El diagnóstico inicial es una llamada ejecutiva de 30 minutos, basada en datos. Identificamos cuellos de botella y fugas de margen que limitan la escala y la previsibilidad. Sales con prioridades, quick wins y un plan de ejecución claro para las próximas semanas.",
         },
         {
           question: "¿Cuál es la diferencia entre GLX y una agencia de marketing?",
           answer:
-            "No vendemos solo leads. Construimos sistemas completos de crecimiento que integran adquisición, ventas, operación y retención. Nuestro enfoque está en el Beneficio Neto Predecible, no solo en métricas de vanidad.",
+            "No somos una agencia de medios: no entregamos “leads” como fin. Implementamos un sistema de crecimiento que conecta adquisición, conversión, capacidad operativa y retención. El KPI no es vanidad: es lucro, margen y previsibilidad—con gobernanza y ejecución semanal.",
         },
         {
-          question: "¿Cuánto tiempo tarda en ver los primeros resultados?",
+          question: "¿Cuánto tarda en verse resultados?",
           answer:
-            "Nuestra metodología está diseñada para generar impacto rápido. Generalmente, identificamos y corregimos ineficiencias críticas en las primeras 4 semanas, con resultados financieros medibles ya en el primer trimestre.",
+            "La mayoría de los clientes ve mejoras operativas en las primeras 2–4 semanas (agenda, SLA, conversión). El impacto financiero consistente aparece a lo largo del primer trimestre, con margen y capacidad bajo gobernanza. Todo acompañado por métricas, cadencia semanal y un plan de ejecución claro.",
         },
         {
-          question: "¿GLX implementa las soluciones o solo recomienda?",
+          question: "¿GLX implementa o solo recomienda?",
           answer:
-            "Somos socios de ejecución. No entregamos solo un PDF con recomendaciones. Trabajamos codo a codo con tu equipo para implementar procesos, configurar herramientas, entrenar equipos y garantizar que la estrategia se convierta en realidad.",
+            "Implementamos. GLX es partner de ejecución: no entregamos un informe y desaparecemos. Trabajamos junto a tu equipo para instalar procesos, dashboards, automatizaciones y gobernanza. Entrenamos, acompañamos y ajustamos por sprints hasta que el resultado se vuelva rutina—con métricas y accountability.",
+        },
+        {
+          question: "¿Qué es el Control Tower y por qué lo necesito?",
+          answer:
+            "GLX Control Tower es tu capa de gobernanza ejecutiva: un panel único que consolida demanda, capacidad, conversión, margen y caja con alertas y prioridades accionables—para detectar desvíos temprano, corregir la ruta con cadencia y escalar con previsibilidad, sin fugas de margen y sin operar a ciegas.",
         },
       ],
     },

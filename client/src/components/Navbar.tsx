@@ -115,7 +115,7 @@ export default function Navbar() {
         }}
       />
       <div className="container flex h-16 items-center justify-between px-3 pt-[env(safe-area-inset-top)] md:h-20 md:px-4">
-        <Link href="/" className="flex items-center gap-2 cursor-pointer">
+        <a href="/#home" className="flex items-center gap-2 cursor-pointer">
           <m.img
             src="/images/logo-transparent.png"
             alt="GLX Partners"
@@ -134,7 +134,7 @@ export default function Navbar() {
             }
             transition={reducedMotion ? undefined : { duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
           />
-        </Link>
+        </a>
 
         <div className="hidden lg:flex items-center gap-5 xl:gap-8">
           <m.button

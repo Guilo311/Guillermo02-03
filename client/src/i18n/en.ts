@@ -5,10 +5,10 @@ export const en: Translations = {
   nav: {
     about: "About GLX",
     services: "What We Do",
-    plans: "Plans",
+    plans: "Our Plans",
     cases: "Cases",
     membersArea: "MEMBERS AREA",
-    schedule: "SCHEDULE DIAGNOSIS",
+    schedule: "BOOK A DIAGNOSTIC SPRINT",
   },
 
   // Hero Section
@@ -20,8 +20,8 @@ export const en: Translations = {
     subtitle: "We transform your operation into",
     subtitleHighlight: "Predictable Net Profit",
     description: "Dashboards + Management Routine + Processes + Automation + AI + Training + Goals. All integrated in one system.",
-    cta: "SCHEDULE DIAGNOSIS",
-    secondary: "VIEW CASES",
+    cta: "BOOK A DIAGNOSTIC SPRINT",
+    secondary: "VIEW OUR CASES",
   },
 
   // Impact Section
@@ -102,26 +102,26 @@ export const en: Translations = {
     eyebrow: 'WHO TRUSTS GLX',
     title: 'CEOs who stopped guessing',
     titleHighlight: 'and started knowing.',
-    subtitle: 'Real cases, with an installed operation and measured results.',
+    subtitle: 'Proven case studies with fully deployed operations and measurable outcomes.',
     item1: {
-      quote: 'We went from spreadsheet chaos to a system that tells me, every Monday, exactly where the bottlenecks are and what decision needs to be made. The impact on margins appeared before the project even finished.',
+      quote: 'We went from spreadsheet chaos to a system that tells me every Monday exactly where the bottlenecks are and what decision needs to be made. The margin impact showed up before the project even ended.',
       author: 'Dr. Felipe Roca Nacif',
       role: 'CEO — MAKTUB Diagnostic Medicine'
     },
     item2: {
-      quote: "The difference with GLX is that they don't leave with a report under their arm. They stay until the process becomes routine for the team. The discipline they brought to our operation changed the standard of the entire company.",
+      quote: "GLX doesn’t walk away with a report. They stay until the process becomes the team’s routine. The discipline they brought to our operation raised the standard across the entire company.",
       author: 'Dr. Izabela Brauer Pinho',
       role: 'CEO — Healthtech Solutions'
     },
     item3: {
-      quote: 'In 45 days, our no-show rate dropped from 24% to 8%. The front desk started answering leads in less than 40 minutes — it used to take all day. Simple things, with the right system, generated over R$ 35K in additional revenue in the first quarter.',
+      quote: 'In 45 days, no-show dropped from 24% to 8%. Front desk response time fell to under 40 minutes—before, it took all day. Simple changes, with the right system, generated over $USD 8K in incremental revenue in the first quarter.',
       author: 'ROBERTO SOARES DE MELO',
       role: 'CLINICAL DIRECTOR - VittaMéd Nutrology Institute',
-      metric: '+R$ 35K/month',
+      metric: '+ $USD 8K/mo',
       metricPeriod: 'in 90 days'
     },
     item4: {
-      quote: 'GLX mapped out that two of our most popular procedures had a negative margin. The schedule was full and seemed fine. After repricing and mix adjustments, our EBITDA margin rose by 11 percentage points in 3 months.',
+      quote: 'GLX found that two of our most popular procedures had negative margins. The schedule was full and it looked fine. After repricing and mix adjustment, EBITDA margin increased by 11 percentage points in 3 months.',
       author: 'CAMILA BRUNELLO',
       role: 'CO-FOUNDER - Lumina Dermatology & Medical Aesthetics',
       metric: '+11pp EBITDA',

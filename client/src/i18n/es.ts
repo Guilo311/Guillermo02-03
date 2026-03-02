@@ -5,23 +5,23 @@ export const es: Translations = {
   nav: {
     about: "GLX",
     services: "Qué Hacemos",
-    plans: "Planes",
+    plans: "Nuestros Planes",
     cases: "Casos",
     membersArea: "ÁREA DE MIEMBROS",
-    schedule: "AGENDAR DIAGNÓSTICO",
+    schedule: "AGENDAR SPRINT DIAGNÓSTICA",
   },
 
   // Hero Section
   hero: {
-    badge: "CONSULTORÍA DE RENDIMIENTO EN SALUD",
+    badge: "Consultoría de Performance en Salud",
     title1: "Growth.",
     title2: "Lean.",
     title3: "Execution.",
     subtitle: "Transformamos tu operación en",
     subtitleHighlight: "Lucro Líquido Predecible",
     description: "Dashboards + Rutina de Gestión + Procesos + Automatizaciones + IA + Capacitación + Metas. Todo integrado en un único sistema.",
-    cta: "AGENDAR DIAGNÓSTICO",
-    secondary: "VER CASOS",
+    cta: "AGENDAR SPRINT DIAGNÓSTICA",
+    secondary: "VER NUESTROS CASOS",
   },
 
   // Impact Section
@@ -104,24 +104,24 @@ export const es: Translations = {
     titleHighlight: 'y empezaron a saber.',
     subtitle: 'Casos reales, con una operación instalada y resultados medidos.',
     item1: {
-      quote: 'Pasamos del caos de las hojas de cálculo a un sistema que me dice, cada lunes, exactamente dónde están los cuellos de botella y qué decisión se debe tomar. El impacto en los márgenes apareció antes de que terminara el proyecto.',
+      quote: 'Pasamos del caos de planillas a un sistema que cada lunes me dice exactamente dónde están los cuellos de botella y qué decisión hay que tomar. El impacto en el margen apareció antes de que el proyecto terminara.',
       author: 'Dr. Felipe Roca Nacif',
       role: 'CEO — MAKTUB Medicina Diagnóstica'
     },
     item2: {
-      quote: 'La diferencia con GLX es que no se van con un informe bajo el brazo. Se quedan hasta que el proceso se convierte en rutina para el equipo. La disciplina que aportaron a nuestra operación cambió el estándar de toda la empresa.',
+      quote: 'La diferencia de GLX es que no se van con un informe bajo el brazo. Se quedan hasta que el proceso se convierta en rutina del equipo. La disciplina que trajeron a nuestra operación elevó el estándar de toda la empresa.',
       author: 'Dra. Izabela Brauer Pinho',
       role: 'CEO — Healthtech Solutions'
     },
     item3: {
-      quote: 'En 45 días, nuestra tasa de ausencias bajó del 24% al 8%. Recepción comenzó a responder prospectos en menos de 40 minutos — antes tardaba todo el día. Cosas simples, con el sistema adecuado, generaron más de R$ 35K en ingresos adicionales en el primer trimestre.',
+      quote: 'En 45 días, el no-show bajó de 24% a 8%. Recepción pasó a responder leads en menos de 40 minutos; antes llevaba todo el día. Cambios simples, con el sistema correcto, generaron más de $USD 8K de ingreso incremental en el primer trimestre.',
       author: 'ROBERTO SOARES DE MELO',
       role: 'DIRECTOR CLÍNICO - Instituto de Nutrología VittaMéd',
-      metric: '+R$ 35K/mes',
-      metricPeriod: 'en 90 días'
+      metric: '+ $USD 8K/mes',
+      metricPeriod: 'EN 90 DIAS'
     },
     item4: {
-      quote: 'GLX mapeó que dos de nuestros procedimientos más populares tenían un margen negativo. La agenda estaba llena y parecía ir bien. Después de ajustar precios y el mix, nuestro margen EBITDA subió 11 puntos porcentuales en 3 meses.',
+      quote: 'GLX mapeó que dos de nuestros procedimientos más populares tenían margen negativo. La agenda estaba llena y parecía que iba bien. Tras reprecificación y ajuste de mix, el margen EBITDA subió 11 puntos porcentuales en 3 meses.',
       author: 'CAMILA BRUNELLO',
       role: 'CO-FUNDADOR - Lumina Dermatología y Estética Médica',
       metric: '+11pp EBITDA',

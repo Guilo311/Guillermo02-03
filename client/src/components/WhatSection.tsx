@@ -143,7 +143,7 @@ export default function WhatSection() {
 
   const content: Record<"pt" | "en" | "es", WhatCopy> = {
     pt: {
-      badge: "ONDE ATUAMOS",
+      badge: "COMO OPERAMOS",
       title: "Quatro alavancas.\nUm único sistema integrado.",
       subtitle:
         "Cada frente ataca uma camada diferente do mesmo problema: sua clinica tem capacidade para lucrar mais — e voce ainda nao sabe exatamente quanto.",
@@ -211,10 +211,10 @@ export default function WhatSection() {
       ],
     },
     en: {
-      badge: "Performance Blocks",
-      title: "Execution system built like product blocks.",
+      badge: "HOW WE RUN THE OPERATION",
+      title: "Four Levers.\nOne Integrated System.",
       subtitle:
-        "Each workstream combines outcome, mechanism and operating cadence. Modular structure to scale with clarity without losing control.",
+        "Each workstream attacks a different layer of the same problem: your clinic has capacity to generate more profit—and you still don’t know exactly how much.",
       resultLabel: "Result",
       mechanismLabel: "Mechanism",
       learnMore: "Learn more",
@@ -222,59 +222,67 @@ export default function WhatSection() {
       services: [
         {
           icon: TrendingUp,
-          title: "Growth & Acquisition",
-          description: "Qualified demand and predictable revenue without inflating CAC.",
-          outcome: "More qualified appointments with controlled CAC and conversion.",
-          mechanism: "Offer, messaging, funnel and weekly optimization cadence.",
+          title: "01 — Growth & Acquisition",
+          description: "More of the right patients, with CAC under control.",
+          outcome:
+            "We structure funnel, channels, and messaging to raise qualified demand—without increasing media spend, by extracting more conversion from existing traffic.\nWith performance governance: targets, weekly cadence, and data-driven optimization.",
+          mechanism:
+            "We structure funnel, channels, and messaging to raise qualified demand—without increasing media spend, by extracting more conversion from existing traffic.\nWith performance governance: targets, weekly cadence, and data-driven optimization.",
           learnMoreTitle: "Growth Operating Layer",
           learnMoreBody:
-            "We design growth as a product system: channels, copy, sales handoff and a conversion dashboard with weekly optimization based on signal quality.",
-          metrics: ["CAC", "Conversion", "Revenue"],
+            "We structure funnel, channels, and messaging to raise qualified demand—without increasing media spend, by extracting more conversion from existing traffic.\nWith performance governance: targets, weekly cadence, and data-driven optimization.",
+          metrics: ["CAC", "Lead→Consult", "No-Show", "Conversion"],
           visualType: "bars",
         },
         {
           icon: Settings,
-          title: "Operations & Lean Design",
-          description: "Operational scale with less queueing, bottlenecks and rework.",
-          outcome: "Released capacity and more predictable operating flow.",
-          mechanism: "Process map, bottleneck analysis, standardization and Lean rituals.",
+          title: "02 — Operations & Capacity",
+          description: "Same structure, more output.",
+          outcome:
+            "We design the operation to scale without chaos. We remove bottlenecks in scheduling, patient flow, and capacity. We standardize processes and automate routines that drain team time.\nResult: higher throughput, less rework, and predictable execution.",
+          mechanism:
+            "We design the operation to scale without chaos. We remove bottlenecks in scheduling, patient flow, and capacity. We standardize processes and automate routines that drain team time.\nResult: higher throughput, less rework, and predictable execution.",
           learnMoreTitle: "Operational Architecture",
           learnMoreBody:
-            "We structure the end-to-end flow, define service standards and follow-up routines to reduce variability, waiting and throughput loss.",
-          metrics: ["Cycle Time", "Capacity", "NPS"],
+            "We design the operation to scale without chaos. We remove bottlenecks in scheduling, patient flow, and capacity. We standardize processes and automate routines that drain team time.\nResult: higher throughput, less rework, and predictable execution.",
+          metrics: ["Cycle Time", "Occupancy", "Capacity", "NPS"],
           visualType: "pipeline",
         },
         {
-          icon: BarChart3,
-          title: "KPIs & Execution Sprints",
-          description: "Strategy translated into operating cadence with owner and deadline.",
-          outcome: "Faster decisions with the right indicators and delivery rhythm.",
-          mechanism: "Scorecards, executive rituals and weekly sprints.",
-          learnMoreTitle: "Execution Control System",
+          icon: Scissors,
+          title: "03 — Margin & Finance",
+          description: "Find where the money disappears.",
+          outcome:
+            "We map true margin by service, physician, and channel. We surface leakage: denials, rework, and discounts with no policy. We set pricing, authorization, and exception rules with governance.\nResult: recovered margin, predictability, and profit protected day to day.",
+          mechanism:
+            "We map true margin by service, physician, and channel. We surface leakage: denials, rework, and discounts with no policy. We set pricing, authorization, and exception rules with governance.\nResult: recovered margin, predictability, and profit protected day to day.",
+          learnMoreTitle: "Margin & Finance",
           learnMoreBody:
-            "We build a decision cockpit with a few high-quality indicators and a short-sprint routine to remove blockers, test levers and register gains.",
-          metrics: ["Goals", "Speed", "Adherence"],
-          visualType: "signal",
+            "We map true margin by service, physician, and channel. We surface leakage: denials, rework, and discounts with no policy. We set pricing, authorization, and exception rules with governance.\nResult: recovered margin, predictability, and profit protected day to day.",
+          metrics: ["EBITDA", "Margin/Service", "Break-even", "Denials"],
+          visualType: "savings",
         },
         {
-          icon: Scissors,
-          title: "Waste Elimination",
-          description: "Margin recovery by cutting invisible costs and operational waste.",
-          outcome: "Higher net margin with recurring loss reduction.",
-          mechanism: "Loss diagnosis, prioritization and gain-capture plan.",
-          learnMoreTitle: "Margin Recovery Engine",
+          icon: BarChart3,
+          title: "04 — Data & Governance",
+          description: "Decisions by KPI—not by bank statement.",
+          outcome:
+            "We install the GLX Control Tower: an executive panel with automated alerts and actionable KPIs. We run weekly sprints with clear priorities and owners. We establish management rituals for fast decisions and course correction.\nYou move out of firefighting and lead with data, cadence, and predictability.",
+          mechanism:
+            "We install the GLX Control Tower: an executive panel with automated alerts and actionable KPIs. We run weekly sprints with clear priorities and owners. We establish management rituals for fast decisions and course correction.\nYou move out of firefighting and lead with data, cadence, and predictability.",
+          learnMoreTitle: "Data & Governance",
           learnMoreBody:
-            "We identify waiting, rework, denials and no-show waste, prioritize by financial impact and implement capture mechanisms to sustain gains.",
-          metrics: ["Margin", "Reduction", "EBITDA"],
-          visualType: "savings",
+            "We install the GLX Control Tower: an executive panel with automated alerts and actionable KPIs. We run weekly sprints with clear priorities and owners. We establish management rituals for fast decisions and course correction.\nYou move out of firefighting and lead with data, cadence, and predictability.",
+          metrics: ["Dashboard", "KPIs", "Alerts", "Forecast"],
+          visualType: "signal",
         },
       ],
     },
     es: {
-      badge: "Performance Blocks",
-      title: "Sistema de ejecucion construido como bloques de producto.",
+      badge: "CÓMO OPERAMOS",
+      title: "Cuatro ejes.\nUn único sistema integrado",
       subtitle:
-        "Cada frente combina resultado, mecanismo y ritmo operativo. Estructura modular para escalar con claridad sin perder control.",
+        "Cada frente ataca una capa distinta del mismo problema: tu clínica tiene capacidad para lucrar más — y aún no sabes exactamente cuánto.",
       resultLabel: "Resultado",
       mechanismLabel: "Mecanismo",
       learnMore: "Learn more",
@@ -282,51 +290,59 @@ export default function WhatSection() {
       services: [
         {
           icon: TrendingUp,
-          title: "Growth & Adquisicion",
-          description: "Demanda calificada y previsibilidad de ingresos sin inflar CAC.",
-          outcome: "Mas agendas calificadas con CAC y conversion controlados.",
-          mechanism: "Oferta, mensaje, embudo y rutina semanal de optimizacion.",
+          title: "01 — Growth & Captación",
+          description: "Más pacientes correctos, con CAC controlado.",
+          outcome:
+            "Estructuramos funnel, canales y mensaje para elevar la demanda calificada—sin aumentar el presupuesto de medios, extrayendo más conversión del tráfico existente.\nCon gobernanza de performance: metas, cadencia semanal y optimización basada en datos.",
+          mechanism:
+            "Estructuramos funnel, canales y mensaje para elevar la demanda calificada—sin aumentar el presupuesto de medios, extrayendo más conversión del tráfico existente.\nCon gobernanza de performance: metas, cadencia semanal y optimización basada en datos.",
           learnMoreTitle: "Growth Operating Layer",
           learnMoreBody:
-            "Disenamos growth como sistema de producto: canales, copy, handoff comercial y panel de conversion con ajustes semanales por calidad de senal.",
-          metrics: ["CAC", "Conversion", "Ingresos"],
+            "Estructuramos funnel, canales y mensaje para elevar la demanda calificada—sin aumentar el presupuesto de medios, extrayendo más conversión del tráfico existente.\nCon gobernanza de performance: metas, cadencia semanal y optimización basada en datos.",
+          metrics: ["CAC", "Lead→Consulta", "No-Show", "Conversión"],
           visualType: "bars",
         },
         {
           icon: Settings,
-          title: "Operacion & Lean Design",
-          description: "Escala operativa con menos filas, cuellos y retrabajo.",
-          outcome: "Capacidad liberada y flujo operativo mas predecible.",
-          mechanism: "Mapa de procesos, cuellos, estandarizacion y rituales Lean.",
+          title: "02 — Operación & Capacidad",
+          description: "Misma estructura, mayores resultados.",
+          outcome:
+            "Diseñamos la operación para escalar sin caos. Eliminamos cuellos de botella en agenda, flujo de atención y capacidad. Estandarizamos procesos y automatizamos rutinas que consumen tiempo del equipo.\nResultado: más throughput, menos retrabajo y ejecución predecible.",
+          mechanism:
+            "Diseñamos la operación para escalar sin caos. Eliminamos cuellos de botella en agenda, flujo de atención y capacidad. Estandarizamos procesos y automatizamos rutinas que consumen tiempo del equipo.\nResultado: más throughput, menos retrabajo y ejecución predecible.",
           learnMoreTitle: "Operational Architecture",
           learnMoreBody:
-            "Estructuramos el flujo de punta a punta, definimos estandares de servicio y rutinas de seguimiento para reducir variabilidad y espera.",
-          metrics: ["Tiempo de Ciclo", "Capacidad", "NPS"],
+            "Diseñamos la operación para escalar sin caos. Eliminamos cuellos de botella en agenda, flujo de atención y capacidad. Estandarizamos procesos y automatizamos rutinas que consumen tiempo del equipo.\nResultado: más throughput, menos retrabajo y ejecución predecible.",
+          metrics: ["Tiempo de Ciclo", "Ocupación", "Capacidad", "NPS"],
           visualType: "pipeline",
         },
         {
-          icon: BarChart3,
-          title: "KPIs & Sprints de Ejecucion",
-          description: "Estrategia traducida en cadencia operativa con responsable y plazo.",
-          outcome: "Decision rapida con indicadores correctos y ritmo de entrega.",
-          mechanism: "Scorecards, rituales ejecutivos y sprints semanales.",
-          learnMoreTitle: "Execution Control System",
+          icon: Scissors,
+          title: "03 — Margen & Finanzas",
+          description: "Descubre dónde se va el dinero.",
+          outcome:
+            "Mapeamos el margen real por servicio, médico y canal. Hacemos visibles las fugas: glosas/denegaciones, retrabajo y descuentos sin política. Establecemos reglas de precio, autorizaciones y excepciones con gobernanza.\nResultado: margen recuperado, previsibilidad y lucro defendido en el día a día.",
+          mechanism:
+            "Mapeamos el margen real por servicio, médico y canal. Hacemos visibles las fugas: glosas/denegaciones, retrabajo y descuentos sin política. Establecemos reglas de precio, autorizaciones y excepciones con gobernanza.\nResultado: margen recuperado, previsibilidad y lucro defendido en el día a día.",
+          learnMoreTitle: "Margen y Finanzas",
           learnMoreBody:
-            "Construimos un cockpit de decision con pocos indicadores de alta calidad y una rutina de sprints cortos para remover bloqueos y capturar ganancias.",
-          metrics: ["Metas", "Velocidad", "Adherencia"],
-          visualType: "signal",
+            "Mapeamos el margen real por servicio, médico y canal. Hacemos visibles las fugas: glosas/denegaciones, retrabajo y descuentos sin política. Establecemos reglas de precio, autorizaciones y excepciones con gobernanza.\nResultado: margen recuperado, previsibilidad y lucro defendido en el día a día.",
+          metrics: ["EBITDA", "Margen/Servicio", "Break-even", "Glosas"],
+          visualType: "savings",
         },
         {
-          icon: Scissors,
-          title: "Eliminacion de Desperdicios",
-          description: "Recuperacion de margen eliminando costo invisible y desperdicio.",
-          outcome: "Mas margen neto con reduccion de perdidas recurrentes.",
-          mechanism: "Diagnostico de perdidas, priorizacion y plan de captura.",
-          learnMoreTitle: "Margin Recovery Engine",
+          icon: BarChart3,
+          title: "04 — Datos & Gobernanza",
+          description: "Decisiones por KPIs, no por extracto.",
+          outcome:
+            "Instalamos el GLX Control Tower: Un panel ejecutivo con alertas automáticos y KPIs accionables. Corremos sprints semanales con prioridades claras y responsables. Creamos rituales de gestión para decidir rápido y corregir la ruta. Sales del modo incendio y lideras con datos, cadencia y previsibilidad.",
+          mechanism:
+            "Instalamos el GLX Control Tower: Un panel ejecutivo con alertas automáticos y KPIs accionables. Corremos sprints semanales con prioridades claras y responsables. Creamos rituales de gestión para decidir rápido y corregir la ruta. Sales del modo incendio y lideras con datos, cadencia y previsibilidad.",
+          learnMoreTitle: "Datos y Gobernanza",
           learnMoreBody:
-            "Identificamos desperdicios de espera, retrabajo, glosas y no-show, priorizamos por impacto financiero e implantamos mecanismos para sostener la mejora.",
-          metrics: ["Margen", "Reduccion", "EBITDA"],
-          visualType: "savings",
+            "Instalamos el GLX Control Tower: Un panel ejecutivo con alertas automáticos y KPIs accionables. Corremos sprints semanales con prioridades claras y responsables. Creamos rituales de gestión para decidir rápido y corregir la ruta. Sales del modo incendio y lideras con datos, cadencia y previsibilidad.",
+          metrics: ["Dashboard", "KPIs", "Alertas", "Forecast"],
+          visualType: "signal",
         },
       ],
     },
@@ -376,14 +392,13 @@ export default function WhatSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mb-6 inline-flex items-center justify-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1"
+            className="glx-pill-shell mb-6 inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1"
           >
-            <span className="h-2 w-2 rounded-full bg-orange-500" />
             <SplitText
               text={t.badge}
               tag="h2"
               splitType="words"
-              className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500"
+              className="glx-pill-text"
               delay={18}
               duration={0.35}
               threshold={0.2}
@@ -464,7 +479,7 @@ export default function WhatSection() {
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-orange-500/70 via-orange-300/25 to-transparent" />
 
                   <div className="relative z-10 flex h-full flex-col">
-                    <div className="mb-6">
+                    <div className="mb-6 pt-2 md:pt-3">
                       <div className="flex min-w-0 items-start gap-3">
                         <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-orange-400/25 bg-orange-500/5 text-orange-300 md:h-11 md:w-11">
                           <service.icon className="h-5 w-5" />
@@ -480,49 +495,11 @@ export default function WhatSection() {
                       </div>
                     </div>
 
-                    {language === "pt" && (index === 0 || index === 1 || index === 2 || index === 3) ? (
-                      <div className="mb-6 rounded-xl border border-white/8 bg-transparent px-4 py-3.5">
-                        <div className="whitespace-pre-line text-[13px] leading-6 text-white/88 md:text-sm">
-                          {index === 0
-                            ? `Estruturamos funil, canais e mensagem para elevar a demanda qualificada.
-Sem aumentar o budget de mídia — extraindo mais conversão do tráfego que já existe.
-Com governança de performance: metas, cadência semanal e otimização orientada a dados.`
-                            : index === 1
-                              ? `Desenhamos a operação para escalar sem virar caos.
-Eliminamos gargalos na agenda, no fluxo de atendimento e na capacidade.
-Padronizamos processos e automatizamos rotinas que drenam tempo do time.
-Resultado: mais throughput, menos retrabalho e execução previsível.`
-                              : index === 2
-                                ? `Mapeamos a margem real por serviço, por médico e por canal.
-Tornamos visíveis os vazamentos: glosas, retrabalho e descontos sem política.
-Estabelecemos regras de preço, autorização e exceções com governança.
-Resultado: margem recuperada, previsibilidade e lucro defendido no dia a dia.`
-                                : `Instalamos o GLX Control Tower: painel executivo com alertas automáticos e KPIs acionáveis.
-Rodamos sprints semanais com prioridades claras e responsáveis por frente.
-Criamos rituais de gestão para decisão rápida e correção de rota.
-Você sai do modo incêndio e passa a liderar por dados, cadência e previsibilidade.`}
-                        </div>
+                    <div className="mb-6 rounded-xl border border-white/8 bg-transparent px-4 py-3.5">
+                      <div className="whitespace-pre-line text-[13px] leading-6 text-white/88 md:text-sm">
+                        {service.outcome}
                       </div>
-                    ) : (
-                      <div className="mb-6 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-white/8 bg-transparent px-4 py-3.5">
-                          <div className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-orange-300/85">
-                            {t.resultLabel}
-                          </div>
-                          <div className="text-[13px] leading-6 text-white/88 md:text-sm">
-                            {service.outcome}
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-white/8 bg-transparent px-4 py-3.5">
-                          <div className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-cyan-200/70">
-                            {t.mechanismLabel}
-                          </div>
-                          <div className="text-[13px] leading-6 text-white/80 md:text-sm">
-                            {service.mechanism}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
 
                     <div className="mt-auto border-t border-white/8 pt-4">
                       <div className="flex flex-wrap gap-2">

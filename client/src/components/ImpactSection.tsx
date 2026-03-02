@@ -49,6 +49,7 @@ function parseDecoratedNumber(input: string): { prefix: string; numeric: number;
 
 function FeaturedLogo({ brand, active }: { brand: FeaturedBrand; active: boolean }) {
   const [broken, setBroken] = useState(false);
+  const isHealthTech = brand.name === "HealthTech Solutions";
   if (broken) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded-lg border border-white/15 bg-white/[0.03] px-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">
@@ -62,6 +63,8 @@ function FeaturedLogo({ brand, active }: { brand: FeaturedBrand; active: boolean
       src={brand.logo}
       alt={brand.name}
       className={`mx-auto h-full w-full rounded-lg object-contain transition-all duration-300 ${
+        isHealthTech ? "scale-[1.8]" : "scale-100"
+      } ${
         active ? "grayscale-0 opacity-100" : "grayscale brightness-75 contrast-110 opacity-65"
       }`}
       onError={() => setBroken(true)}
@@ -217,13 +220,12 @@ export default function ImpactSection() {
           transition={reducedMotion ? undefined : { duration: 7, repeat: Infinity, ease: "easeInOut" }}
         />
         <div className="mb-14 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+          <span className="glx-pill-shell inline-flex items-center gap-2 rounded-full border px-4 py-2">
             <SplitText
               text={badgeByLanguage[language]}
               splitType="words"
               tag="span"
-              className="inline-flex"
+              className="glx-pill-text inline-flex"
               delay={18}
               duration={0.35}
               threshold={0.2}

@@ -182,9 +182,9 @@ export default function Plans() {
     <div className="min-h-screen bg-[#070708] text-white">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#070708]/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-4 md:h-20">
-          <Link href="/" className="flex items-center gap-2">
+          <a href="/#home" className="flex items-center gap-2">
             <img src="/images/logo-transparent.png" alt="GLX Partners" className="h-12 w-auto md:h-20" />
-          </Link>
+          </a>
 
           <Link href={dashboardHref}>
             <m.div whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }}>
