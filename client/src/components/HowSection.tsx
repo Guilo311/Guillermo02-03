@@ -20,7 +20,7 @@ export default function HowSection() {
       badge: "Como Fazemos",
       title1: "Nosso Método",
       title2: "GLX",
-      cta: "Começar Transformação",
+      cta: "AGENDAR SPRINT DIAGNÓSTICA",
       dashboard: {
         subtitle: "Painel Executivo",
         live: "Ao vivo",
