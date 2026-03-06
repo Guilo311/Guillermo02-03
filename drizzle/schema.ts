@@ -21,6 +21,7 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   /** Subscription plan: essencial, pro, enterprise */
   plan: mysqlEnum("plan", ["essencial", "pro", "enterprise"]).default("essencial").notNull(),
+  preferredCurrency: mysqlEnum("preferredCurrency", ["BRL", "USD", "ARS", "CLP", "COP", "MXN", "PEN", "UYU"]).default("BRL").notNull(),
   mfaEnabled: boolean("mfaEnabled").default(false).notNull(),
   /** Whether the account is active */
   isActive: boolean("isActive").default(true).notNull(),
@@ -514,6 +515,7 @@ export const integrations = mysqlTable("integrations", {
   clientId: int("clientId").references(() => clients.id).notNull(),
   userId: int("userId").references(() => users.id).notNull(),
   type: mysqlEnum("type", [
+    "kommo", "asaas",
     "google_sheets", "gtm", "meta_pixel", "meta_capi",
     "google_ads", "google_ads_enhanced", "excel_graph_api",
     "power_bi", "crm_hubspot", "crm_rd_station", "server_side_gtm"
@@ -626,7 +628,7 @@ export const controlTowerCrmCredentials = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     userId: int("userId").references(() => users.id).notNull(),
-    provider: mysqlEnum("provider", ["kommo"]).default("kommo").notNull(),
+    provider: mysqlEnum("provider", ["kommo", "asaas"]).default("kommo").notNull(),
     accountDomain: varchar("accountDomain", { length: 255 }).notNull(),
     accessToken: text("accessToken").notNull(),
     refreshToken: text("refreshToken").notNull(),
@@ -648,7 +650,7 @@ export const controlTowerCrmLeads = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     userId: int("userId").references(() => users.id).notNull(),
-    provider: mysqlEnum("provider", ["kommo"]).default("kommo").notNull(),
+    provider: mysqlEnum("provider", ["kommo", "asaas"]).default("kommo").notNull(),
     externalLeadId: varchar("externalLeadId", { length: 120 }).notNull(),
     pipeline: varchar("pipeline", { length: 120 }),
     status: varchar("status", { length: 120 }),
@@ -675,7 +677,7 @@ export const controlTowerWebhookEvents = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     userId: int("userId").references(() => users.id),
-    provider: mysqlEnum("provider", ["kommo"]).default("kommo").notNull(),
+    provider: mysqlEnum("provider", ["kommo", "asaas"]).default("kommo").notNull(),
     eventId: varchar("eventId", { length: 160 }).notNull(),
     signature: varchar("signature", { length: 255 }),
     payload: json("payload").notNull(),
@@ -696,7 +698,7 @@ export const controlTowerSyncState = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     userId: int("userId").references(() => users.id).notNull(),
-    provider: mysqlEnum("provider", ["kommo"]).default("kommo").notNull(),
+    provider: mysqlEnum("provider", ["kommo", "asaas"]).default("kommo").notNull(),
     lastCursor: text("lastCursor"),
     lastSuccessAt: timestamp("lastSuccessAt"),
     lastErrorAt: timestamp("lastErrorAt"),

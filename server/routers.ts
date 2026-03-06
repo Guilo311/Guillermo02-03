@@ -8,6 +8,7 @@ import { adminRouter } from "./adminRouter";
 import { authRouter } from "./authRouter";
 import { dashboardDataRouter } from "./dashboardDataRouter";
 import { controlTowerRouter } from "./controlTowerRouter";
+import { currencyRouter } from "./currencyRouter";
 import { getClientBySlug, getAllDashboardData, getManualEntries, createManualEntry, deleteManualEntry } from "./db";
 
 export const appRouter = router({
@@ -26,6 +27,7 @@ export const appRouter = router({
         loginMethod: user.loginMethod,
         role: user.role,
         plan: user.plan,
+        preferredCurrency: user.preferredCurrency,
         mfaEnabled: user.mfaEnabled,
         isActive: user.isActive,
         createdAt: user.createdAt,
@@ -53,6 +55,7 @@ export const appRouter = router({
 
   // Control Tower Enterprise BI (Client Dashboard /dashboard)
   controlTower: controlTowerRouter,
+  currency: currencyRouter,
 
   // Manual Entries CRUD (for authenticated clients)
   manualEntries: router({

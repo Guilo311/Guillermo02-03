@@ -95,6 +95,11 @@ export default function AdminDashboard() {
                 Kommo
               </Button>
             </Link>
+            <Link href="/admin/asaas">
+              <Button variant="outline">
+                Asaas
+              </Button>
+            </Link>
             <Link href="/admin/usuarios">
               <Button className="bg-[#e67e22] hover:bg-[#f08e36] text-white">
                 {c.manageUsers}

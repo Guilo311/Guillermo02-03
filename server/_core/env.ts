@@ -67,6 +67,7 @@ const developmentSecret = `dev-${randomBytes(24).toString("hex")}`;
 
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
+  oauthPortalUrl: process.env.VITE_OAUTH_PORTAL_URL?.trim() ?? "",
   cookieSecret: jwtSecret ?? developmentSecret,
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
@@ -78,6 +79,12 @@ export const ENV = {
   kommoClientId: process.env.KOMMO_CLIENT_ID?.trim() ?? "",
   kommoClientSecret: process.env.KOMMO_CLIENT_SECRET?.trim() ?? "",
   kommoWebhookSecret: process.env.KOMMO_WEBHOOK_SECRET?.trim() ?? "",
+  asaasAccessToken: process.env.ASAAS_ACCESS_TOKEN?.trim() ?? "",
+  asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN?.trim() ?? "",
+  asaasApiBaseUrl: process.env.ASAAS_API_BASE_URL?.trim() ?? "https://api.asaas.com/v3",
+  asaasUserAgent: process.env.ASAAS_USER_AGENT?.trim() ?? "glx-control-tower/1.0",
+  exchangeRateApiBaseUrl: process.env.EXCHANGE_RATE_API_BASE_URL?.trim() ?? "https://api.frankfurter.dev/v1/latest",
+  exchangeRateCacheTtlMs: Number(process.env.EXCHANGE_RATE_CACHE_TTL_MS ?? 30 * 60 * 1000),
   bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() ?? "",
   bootstrapAdminPassword: process.env.BOOTSTRAP_ADMIN_PASSWORD ?? "",
   bootstrapTestClientEmails: parseEmailList(process.env.BOOTSTRAP_TEST_CLIENT_EMAILS),

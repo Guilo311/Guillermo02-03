@@ -46,6 +46,8 @@ const BOOTSTRAP_DEMO_CLIENTS = (() => {
 })();
 
 const adminProvisionedIntegrationTypeValues = [
+  "kommo",
+  "asaas",
   "crm_hubspot",
   "crm_rd_station",
   "meta_pixel",

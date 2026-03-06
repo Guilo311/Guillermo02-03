@@ -3,6 +3,7 @@
    Cada registro tem dimensões: profissional, canal, unidade, procedimento,
    status. Os filtros aplicam sobre isso para gerar KPIs e séries dinâmicas.
    ======================================================================= */
+import type { ControlTowerFact } from "@shared/types";
 
 export interface Appointment {
   date: string;       // YYYY-MM-DD
@@ -49,6 +50,28 @@ const procedures = ['Botox', 'Preenchimento', 'Laser', 'Peeling', 'Limpeza'];
 const statuses = ['Realizada', 'No-Show', 'Cancelada', 'Confirmada'];
 const severities = ['P1', 'P2', 'P3'];
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+type FilterOptionKey = "channel" | "professional" | "procedure" | "unit" | "status" | "severity";
+
+function uniqueDimensionValues(
+  data: Appointment[],
+  key: FilterOptionKey,
+  fallback: string[],
+) {
+  if (data.length === 0) {
+    return fallback;
+  }
+
+  const values = Array.from(
+    new Set(
+      data
+        .map((row) => row[key])
+        .filter((value): value is string => Boolean(value && value.trim())),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  return values.length > 0 ? values : fallback;
+}
 
 function seededRandom(seed: number) {
   let s = seed;
@@ -107,21 +130,38 @@ export function getAllAppointments(): Appointment[] {
   return _allAppointments;
 }
 
+function periodToDays(period: Filters["period"]) {
+  if (period === "7d") return 7;
+  if (period === "15d") return 15;
+  if (period === "30d") return 30;
+  if (period === "3m") return 90;
+  if (period === "6m") return 180;
+  if (period === "1 ano") return 365;
+  return 30;
+}
+
+export function getFilterReferenceDate(data: Appointment[], fallback = new Date()) {
+  const latestTimestamp = data.reduce<number | null>((latest, row) => {
+    const rowTimestamp = new Date(`${row.date}T12:00:00`).getTime();
+    if (!Number.isFinite(rowTimestamp)) {
+      return latest;
+    }
+    if (latest === null || rowTimestamp > latest) {
+      return rowTimestamp;
+    }
+    return latest;
+  }, null);
+
+  return latestTimestamp ? new Date(latestTimestamp) : fallback;
+}
+
 export function applyFilters(data: Appointment[], filters: Filters): Appointment[] {
   let filtered = [...data];
 
   // Period filter
-  const now = new Date(2026, 1, 24); // Feb 24, 2026
-  let daysBack = 30;
-  if (filters.period === '7d') daysBack = 7;
-  else if (filters.period === '15d') daysBack = 15;
-  else if (filters.period === '30d') daysBack = 30;
-  else if (filters.period === '3m') daysBack = 90;
-  else if (filters.period === '6m') daysBack = 180;
-  else if (filters.period === '1 ano') daysBack = 365;
-
-  const cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - daysBack);
+  const referenceDate = getFilterReferenceDate(data);
+  const cutoff = new Date(referenceDate);
+  cutoff.setDate(cutoff.getDate() - periodToDays(filters.period));
   const cutoffStr = cutoff.toISOString().split('T')[0];
   filtered = filtered.filter(a => a.date >= cutoffStr);
 
@@ -173,7 +213,7 @@ export function computeKPIs(data: Appointment[]) {
 }
 
 export function computeByProfessional(data: Appointment[]) {
-  return professionals.map(prof => {
+  return uniqueDimensionValues(data, "professional", professionals).map(prof => {
     const d = data.filter(a => a.professional === prof);
     const kpis = computeKPIs(d);
     return { name: prof, ...kpis };
@@ -181,7 +221,7 @@ export function computeByProfessional(data: Appointment[]) {
 }
 
 export function computeByChannel(data: Appointment[]) {
-  return channels.map(ch => {
+  return uniqueDimensionValues(data, "channel", channels).map(ch => {
     const d = data.filter(a => a.channel === ch);
     const kpis = computeKPIs(d);
     return { name: ch, ...kpis };
@@ -189,10 +229,18 @@ export function computeByChannel(data: Appointment[]) {
 }
 
 export function computeByProcedure(data: Appointment[]) {
-  return procedures.map(proc => {
+  return uniqueDimensionValues(data, "procedure", procedures).map(proc => {
     const d = data.filter(a => a.procedure === proc);
     const kpis = computeKPIs(d);
     return { name: proc, ...kpis };
+  });
+}
+
+export function computeByUnit(data: Appointment[]) {
+  return uniqueDimensionValues(data, "unit", units).map(unit => {
+    const d = data.filter(a => a.unit === unit);
+    const kpis = computeKPIs(d);
+    return { name: unit, ...kpis };
   });
 }
 
@@ -230,4 +278,53 @@ export function computeWeeklyTrend(data: Appointment[]) {
   }));
 }
 
+export function getFilterOptions(data: Appointment[]) {
+  return {
+    channels: uniqueDimensionValues(data, "channel", channels),
+    professionals: uniqueDimensionValues(data, "professional", professionals),
+    procedures: uniqueDimensionValues(data, "procedure", procedures),
+    units: uniqueDimensionValues(data, "unit", units),
+    statuses: uniqueDimensionValues(data, "status", statuses),
+    severities: uniqueDimensionValues(data, "severity", severities),
+  };
+}
+
 export { professionals, channels, units, procedures, statuses, severities };
+
+function mapStatus(status: ControlTowerFact["status"]): Appointment["status"] {
+  if (status === "realizado") return "Realizada";
+  if (status === "noshow") return "No-Show";
+  if (status === "cancelado") return "Cancelada";
+  return "Confirmada";
+}
+
+function mapWeekday(timestamp: string) {
+  const day = new Date(timestamp).getDay();
+  return weekdays[day === 0 ? 6 : day - 1] ?? "Mon";
+}
+
+function mapSeverity(fact: ControlTowerFact): Appointment["severity"] {
+  if (fact.status === "noshow") return "P1";
+  if (fact.status === "cancelado" || fact.waitMinutes > 25) return "P2";
+  return "P3";
+}
+
+export function controlTowerFactsToAppointments(facts: ControlTowerFact[]): Appointment[] {
+  return facts.map((fact) => ({
+    date: fact.timestamp.slice(0, 10),
+    weekday: mapWeekday(fact.timestamp),
+    professional: fact.professional,
+    channel: fact.channel,
+    unit: fact.unit || "Principal",
+    procedure: fact.procedure,
+    status: mapStatus(fact.status),
+    severity: mapSeverity(fact),
+    revenue: fact.status === "realizado" ? fact.entries : 0,
+    cost: fact.exits,
+    nps: fact.npsScore > 10 ? Math.round((fact.npsScore / 10) * 10) / 10 : fact.npsScore || null,
+    waitMinutes: fact.waitMinutes,
+    isReturn: fact.baseOldRevenueCurrent > fact.baseOldRevenuePrevious,
+    leadSource: fact.channel,
+    cac: fact.custoVariavel > 0 ? fact.custoVariavel * 1.5 : 80,
+  }));
+}

@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { CurrencyProvider } from "./contexts/CurrencyContext";
 import "./index.css";
 import "./i18next-init"; // Correção de arquivo
 
@@ -66,9 +67,11 @@ const trpcClient = trpc.createClient({
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <MotionProvider>
-        <App />
-      </MotionProvider>
+      <CurrencyProvider>
+        <MotionProvider>
+          <App />
+        </MotionProvider>
+      </CurrencyProvider>
     </QueryClientProvider>
   </trpc.Provider>
 );

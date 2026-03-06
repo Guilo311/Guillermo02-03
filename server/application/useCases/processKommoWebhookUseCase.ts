@@ -4,6 +4,7 @@ export interface ProcessKommoWebhookInput {
   eventId: string;
   signature?: string;
   payload: unknown;
+  expectedSecret?: string;
 }
 
 export interface ProcessKommoWebhookResult {
@@ -17,11 +18,12 @@ export async function processKommoWebhookUseCase(input: ProcessKommoWebhookInput
     return { accepted: false, status: "ignored", reason: "missing_event_id" };
   }
 
-  if (!ENV.kommoWebhookSecret) {
+  const expectedSecret = input.expectedSecret ?? ENV.kommoWebhookSecret;
+  if (!expectedSecret) {
     return { accepted: false, status: "ignored", reason: "missing_webhook_secret" };
   }
 
-  if (!input.signature || input.signature !== ENV.kommoWebhookSecret) {
+  if (!input.signature || input.signature !== expectedSecret) {
     return { accepted: false, status: "ignored", reason: "invalid_signature" };
   }
 

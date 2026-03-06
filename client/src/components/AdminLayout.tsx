@@ -55,7 +55,7 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-type NavKey = "dashboard" | "finance" | "users" | "system" | "kommo" | "errors" | "flags" | "settings";
+type NavKey = "dashboard" | "finance" | "users" | "system" | "kommo" | "asaas" | "errors" | "flags" | "settings";
 
 const NAV_ITEMS: Array<{ key: NavKey; href: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: "dashboard", href: "/admin", icon: LayoutDashboard },
@@ -63,6 +63,7 @@ const NAV_ITEMS: Array<{ key: NavKey; href: string; icon: React.ComponentType<{ 
   { key: "users", href: "/admin/usuarios", icon: Users },
   { key: "system", href: "/admin/sistema", icon: Server },
   { key: "kommo", href: "/admin/kommo", icon: Wifi },
+  { key: "asaas", href: "/admin/asaas", icon: CreditCard },
   { key: "errors", href: "/admin/erros", icon: AlertTriangle },
   { key: "flags", href: "/admin/flags", icon: Flag },
   { key: "settings", href: "/admin/configuracoes", icon: Settings },

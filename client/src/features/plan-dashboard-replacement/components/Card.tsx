@@ -2,6 +2,8 @@ import React from 'react';
 import { LucideIcon, ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { translateDashboardText } from '../i18n';
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -20,12 +22,25 @@ interface CardProps {
 }
 
 export function Card({ title, value, subtitle, icon: Icon, trend, badge, children, className, glowOnHover = true }: CardProps) {
+  const { language } = useLanguage();
+  const actionLabel =
+    language === 'en'
+      ? 'open calculation and source'
+      : language === 'es'
+        ? 'abrir cálculo y fuente'
+        : 'abrir cálculo e fonte';
+
   return (
     <div className={cn(
-      "group relative bg-[#111318]/50 backdrop-blur-xl border border-[#1f2833]/70 rounded-2xl p-6 overflow-hidden transition-all duration-500",
+      "group relative bg-[#111318]/50 backdrop-blur-xl border border-[#1f2833]/70 rounded-2xl p-6 overflow-hidden transition-all duration-500 cursor-pointer",
       glowOnHover && "hover:border-[#ff5a1f]/30 hover:bg-[#111318]",
       className
-    )}>
+    )}
+      data-kpi-title={title}
+      role="button"
+      tabIndex={0}
+      aria-label={`${translateDashboardText(title, language)}: ${actionLabel}`}
+    >
       {glowOnHover && (
         <div className="absolute inset-0 bg-gradient-to-br from-[#ff5a1f]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       )}

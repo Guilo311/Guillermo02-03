@@ -9,6 +9,8 @@ import { createContext } from "./context";
 import { registerSiteRoutes } from "../siteRouter";
 import { serveStatic, setupVite } from "./vite";
 import { registerKommoWebhookRouter } from "../infrastructure/webhooks/kommoRouter";
+import { registerAsaasWebhookRouter } from "../infrastructure/webhooks/asaasRouter";
+import { currencyService } from "../domain/currencyService";
 
 // ═══════════════════════════════════════════════════════════════
 // Port Discovery
@@ -207,6 +209,7 @@ function registerAppRoutes(app: Express) {
   registerSiteRoutes(app);
   registerOAuthRoutes(app);
   registerKommoWebhookRouter(app);
+  registerAsaasWebhookRouter(app);
 
   app.use(
     "/api/trpc",
@@ -229,6 +232,7 @@ export async function startServer() {
   const server = createServer(app);
 
   registerAppRoutes(app);
+  currencyService.startAutoRefresh();
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

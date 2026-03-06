@@ -1,6 +1,55 @@
 import { z } from "zod";
 import { adminProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { kommoFullSyncUseCase } from "./application/useCases/kommoFullSyncUseCase";
+import { asaasFullSyncUseCase } from "./application/useCases/asaasFullSyncUseCase";
+
+const optionalTrimmedString = (max: number) =>
+  z.string().trim().max(max).optional().transform((value) => {
+    if (!value) return undefined;
+    return value.length > 0 ? value : undefined;
+  });
+
+type DbUserRecord = Awaited<ReturnType<typeof db.getAllUsers>>[number];
+type SafeAdminUser = Omit<DbUserRecord, "passwordHash" | "openId">;
+type DbIntegrationConfig = Awaited<ReturnType<typeof db.listProviderIntegrationConfigs>>[number];
+type SafeIntegrationConfig = Omit<
+  DbIntegrationConfig,
+  "accessToken" | "refreshToken" | "webhookSecret" | "webhookToken"
+> & {
+  hasAccessToken: boolean;
+  hasRefreshToken: boolean;
+  hasWebhookSecret: boolean;
+  hasWebhookToken: boolean;
+};
+
+export function sanitizeUserForAdmin(user: DbUserRecord): SafeAdminUser {
+  const {
+    passwordHash: _passwordHash,
+    openId: _openId,
+    ...safeUser
+  } = user;
+  return safeUser;
+}
+
+export function sanitizeIntegrationConfig(config: DbIntegrationConfig | null | undefined): SafeIntegrationConfig | null {
+  if (!config) return null;
+  const {
+    accessToken: _accessToken,
+    refreshToken: _refreshToken,
+    webhookSecret: _webhookSecret,
+    webhookToken: _webhookToken,
+    ...safeConfig
+  } = config;
+
+  return {
+    ...safeConfig,
+    hasAccessToken: Boolean(config.accessToken),
+    hasRefreshToken: Boolean(config.refreshToken),
+    hasWebhookSecret: Boolean(config.webhookSecret),
+    hasWebhookToken: Boolean(config.webhookToken),
+  };
+}
 
 export const adminRouter = router({
   // ==================== DASHBOARD OVERVIEW ====================
@@ -54,7 +103,7 @@ export const adminRouter = router({
       return users.map((user) => {
         const summary = integrationSummaryByUser.get(user.id);
         return {
-          ...user,
+          ...sanitizeUserForAdmin(user),
           integrationCount: summary?.count ?? 0,
           integrationTypes: summary?.types ?? [],
         };
@@ -66,7 +115,8 @@ export const adminRouter = router({
       query: z.string().min(1)
     }))
     .query(async ({ input }) => {
-      return await db.searchUsers(input.query);
+      const users = await db.searchUsers(input.query);
+      return users.map((user) => sanitizeUserForAdmin(user));
     }),
 
   updateUserRole: adminProcedure
@@ -292,6 +342,76 @@ export const adminRouter = router({
     .mutation(async ({ input }) => {
       await db.createSystemMetric(input);
       return { success: true };
+    }),
+
+  getIntegrationConfigs: adminProcedure
+    .query(async () => {
+      const configs = await db.listProviderIntegrationConfigs();
+      return configs.map((config) => sanitizeIntegrationConfig(config));
+    }),
+
+  getMyIntegrationConfig: adminProcedure
+    .input(z.object({ provider: z.enum(["kommo", "asaas"]) }))
+    .query(async ({ ctx, input }) => {
+      const config = await db.getProviderIntegrationConfig(ctx.user.id, input.provider);
+      return sanitizeIntegrationConfig(config);
+    }),
+
+  saveIntegrationConfig: adminProcedure
+    .input(z.object({
+      provider: z.enum(["kommo", "asaas"]),
+      enabled: z.boolean().default(true),
+      accountDomain: optionalTrimmedString(255),
+      apiBaseUrl: optionalTrimmedString(2000),
+      accessToken: optionalTrimmedString(2000),
+      refreshToken: optionalTrimmedString(2000),
+      webhookSecret: optionalTrimmedString(1000),
+      webhookToken: optionalTrimmedString(1000),
+      userAgent: optionalTrimmedString(255),
+      environment: z.enum(["sandbox", "production"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const saved = await db.upsertProviderIntegrationConfig({
+        userId: ctx.user.id,
+        provider: input.provider,
+        enabled: input.enabled,
+        accountDomain: input.accountDomain,
+        apiBaseUrl: input.apiBaseUrl,
+        accessToken: input.accessToken,
+        refreshToken: input.refreshToken,
+        webhookSecret: input.webhookSecret,
+        webhookToken: input.webhookToken,
+        userAgent: input.userAgent,
+        environment: input.environment,
+      });
+
+      await db.createAuditLog({
+        userId: ctx.user.id,
+        action: "SAVE_INTEGRATION_CONFIG",
+        entity: "integrations",
+        entityId: `${ctx.user.id}:${input.provider}`,
+        newValue: {
+          provider: input.provider,
+          enabled: input.enabled,
+        },
+      });
+
+      return { success: true, config: sanitizeIntegrationConfig(saved) };
+    }),
+
+  syncIntegrationNow: adminProcedure
+    .input(z.object({ provider: z.enum(["kommo", "asaas"]) }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.provider === "kommo") {
+        return kommoFullSyncUseCase({ userId: ctx.user.id, provider: "kommo" });
+      }
+      return asaasFullSyncUseCase({ userId: ctx.user.id });
+    }),
+
+  getIntegrationPipelineStatus: adminProcedure
+    .input(z.object({ provider: z.enum(["kommo", "asaas"]) }))
+    .query(async ({ ctx, input }) => {
+      return db.getIntegrationPipelineSnapshot(ctx.user.id, input.provider);
     }),
 });
 

@@ -139,6 +139,8 @@ const DASHBOARD_SECTION_LABELS: Record<SectionId, string> = {
 const PLAN_ORDER: PlanTier[] = ["essencial", "pro", "enterprise"];
 
 type AdminProvisioningIntegrationType =
+  | "kommo"
+  | "asaas"
   | "crm_hubspot"
   | "crm_rd_station"
   | "meta_pixel"
@@ -159,6 +161,8 @@ type NewUserIntegrationDraft = {
 };
 
 const integrationTypeLabels: Record<AdminProvisioningIntegrationType, string> = {
+  kommo: "Kommo",
+  asaas: "Asaas",
   crm_hubspot: "CRM HubSpot",
   crm_rd_station: "CRM RD Station",
   meta_pixel: "Meta Pixel",
@@ -393,14 +397,14 @@ export default function AdminUsuarios() {
                   Novo Usuário
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-4xl">
+              <DialogContent className="sm:max-w-4xl max-h-[90vh]">
                 <DialogHeader>
                   <DialogTitle>Adicionar Novo Usuário</DialogTitle>
                   <DialogDescription>
                     Preencha os dados para criar um novo usuário no sistema.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4 pr-2">
                   <div className="space-y-2">
                     <Label htmlFor="nome">Nome *</Label>
                     <Input 
@@ -560,7 +564,7 @@ export default function AdminUsuarios() {
                     </div>
                   </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="border-t border-border/60 pt-4">
                   <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>Cancelar</Button>
                   <Button onClick={handleAddUser} disabled={createUserMutation.isPending}>
                     {createUserMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

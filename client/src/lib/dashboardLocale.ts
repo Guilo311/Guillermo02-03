@@ -48,6 +48,7 @@ type AdminLayoutCopy = {
     users: string;
     system: string;
     kommo: string;
+    asaas: string;
     errors: string;
     flags: string;
     settings: string;
@@ -455,6 +456,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
       users: "Usuarios",
       system: "Sistema",
       kommo: "Kommo",
+      asaas: "Asaas",
       errors: "Erros e Logs",
       flags: "Feature Flags",
       settings: "Configurações",
@@ -523,6 +525,16 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
           "Webhook autenticado evita ingestao de eventos falsos.",
         ],
       },
+      "/admin/asaas": {
+        title: "Legenda - Asaas",
+        description:
+          "Parametros de token, webhook e fila para cobrancas em tempo real.",
+        bullets: [
+          "Access token autentica chamadas REST no Asaas.",
+          "Webhook token valida eventos financeiros recebidos.",
+          "Fila com retry evita perda de cobrancas e pagamentos.",
+        ],
+      },
       "/admin/erros": {
         title: "Legenda - Erros e Logs",
         description:
@@ -563,6 +575,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
       users: "Users",
       system: "System",
       kommo: "Kommo",
+      asaas: "Asaas",
       errors: "Errors and Logs",
       flags: "Feature Flags",
       settings: "Settings",
@@ -631,6 +644,16 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
           "Authenticated webhook prevents forged event ingestion.",
         ],
       },
+      "/admin/asaas": {
+        title: "Legend - Asaas",
+        description:
+          "Token, webhook and queue parameters for real-time billing ingestion.",
+        bullets: [
+          "Access token authenticates REST requests against Asaas.",
+          "Webhook token validates incoming financial events.",
+          "Retry queue prevents payment event loss.",
+        ],
+      },
       "/admin/erros": {
         title: "Legend - Errors and Logs",
         description:
@@ -671,6 +694,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
       users: "Usuarios",
       system: "Sistema",
       kommo: "Kommo",
+      asaas: "Asaas",
       errors: "Errores y Logs",
       flags: "Feature Flags",
       settings: "Configuraciones",
@@ -737,6 +761,16 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
           "Client ID, secret y redirect URL deben coincidir con la app registrada en Kommo.",
           "Refresh token mantiene la sincronizacion sin relogin manual.",
           "Webhook autenticado evita ingestar eventos falsos.",
+        ],
+      },
+      "/admin/asaas": {
+        title: "Leyenda - Asaas",
+        description:
+          "Parametros de token, webhook y cola para cobros en tiempo real.",
+        bullets: [
+          "Access token autentica llamadas REST contra Asaas.",
+          "Webhook token valida eventos financieros entrantes.",
+          "La cola con retry evita perdida de eventos de pago.",
         ],
       },
       "/admin/erros": {

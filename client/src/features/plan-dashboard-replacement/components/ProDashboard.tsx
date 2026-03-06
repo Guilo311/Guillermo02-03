@@ -1,11 +1,12 @@
 import { useMemo, useCallback, memo } from 'react';
 import ReactApexChart from 'react-apexcharts';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { getChartTheme } from '../utils/chartOptions';
 import FilterBar from './FilterBar';
 import {
-  Filters, getAllAppointments, applyFilters, computeKPIs,
+  type Appointment, Filters, getAllAppointments, applyFilters, computeKPIs,
   computeByProfessional, computeByChannel, computeByProcedure,
-  computeByWeekday, computeWeeklyTrend,
+  computeByWeekday, computeWeeklyTrend, getFilterOptions,
 } from '../data/mockData';
 
 interface Props {
@@ -14,12 +15,7 @@ interface Props {
   theme: 'dark' | 'light';
   filters: Filters;
   onFiltersChange: (f: Filters) => void;
-}
-
-function fmt(n: number): string {
-  if (n >= 1000000) return `R$ ${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `R$ ${(n / 1000).toFixed(1)}k`;
-  return `R$ ${n.toFixed(0)}`;
+  appointments?: Appointment[];
 }
 
 type Priority = 'P1' | 'P2' | 'P3' | 'OK';
@@ -38,9 +34,12 @@ function badge(priority: Priority) {
   return { label: 'OK', className: 'green' };
 }
 
-function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" }: Props) {
+function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT", appointments }: Props) {
+  const { currency, convertMoneyValue, formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
+  const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
   const ct = useMemo(() => getChartTheme(theme), [theme]);
-  const allData = useMemo(() => getAllAppointments(), []);
+  const allData = useMemo(() => appointments ?? getAllAppointments(), [appointments]);
+  const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
   const kpis = useMemo(() => computeKPIs(filtered), [filtered]);
   const byProf = useMemo(() => computeByProfessional(filtered), [filtered]);
@@ -426,13 +425,13 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
 
   return (
     <div className="animate-fade-in" key={activeTab}>
-      <FilterBar filters={filters} onChange={onFiltersChange} />
+      <FilterBar filters={filters} onChange={onFiltersChange} options={filterOptions} />
 
       {/* ===== VISÃO CEO PRO ===== */}
       {activeTab === 0 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Visão CEO — Pro</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">Receita Bruta</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Período</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Bruta')}</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Período</span></div></div>
           <div className="overview-card"><div className="overview-card-label">Margem</div><div className="overview-card-value" style={{color:kpis.margin>=20?'var(--green)':'var(--red)'}}>{kpis.margin.toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">NPS</div><div className="overview-card-value" style={{color:kpis.avgNPS>=8?'var(--green)':'var(--yellow)'}}>{kpis.avgNPS.toFixed(1)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
@@ -455,8 +454,8 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
               <tr><td>Ocupação</td><td style={{fontWeight:700}}>{kpis.occupancyRate.toFixed(1)}%</td><td>{'>'}75%</td><td><span className={`chart-card-badge ${kpis.occupancyRate>=75?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.occupancyRate>=75?'OK':'ATENÇÃO'}</span></td></tr>
               <tr><td>NPS</td><td style={{fontWeight:700}}>{kpis.avgNPS.toFixed(1)}</td><td>{'>'}8.0</td><td><span className={`chart-card-badge ${kpis.avgNPS>=8?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.avgNPS>=8?'OK':'ATENÇÃO'}</span></td></tr>
               <tr><td>Margem</td><td style={{fontWeight:700}}>{kpis.margin.toFixed(1)}%</td><td>{'>'}20%</td><td><span className={`chart-card-badge ${kpis.margin>=20?'green':'red'}`} style={{display:'inline-block'}}>{kpis.margin>=20?'OK':'CRÍTICO'}</span></td></tr>
-              <tr><td>CAC</td><td style={{fontWeight:700}}>{fmt(kpis.avgCAC)}</td><td>{'<'}R$150</td><td><span className={`chart-card-badge ${kpis.avgCAC<=150?'green':'red'}`} style={{display:'inline-block'}}>{kpis.avgCAC<=150?'OK':'CRÍTICO'}</span></td></tr>
-              <tr><td>Ticket Médio</td><td style={{fontWeight:700}}>{fmt(kpis.avgTicket)}</td><td>{'>'}R$300</td><td><span className={`chart-card-badge ${kpis.avgTicket>=300?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.avgTicket>=300?'OK':'ATENÇÃO'}</span></td></tr>
+              <tr><td>CAC</td><td style={{fontWeight:700}}>{fmt(kpis.avgCAC)}</td><td>{'<'}{formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}</td><td><span className={`chart-card-badge ${kpis.avgCAC<=150?'green':'red'}`} style={{display:'inline-block'}}>{kpis.avgCAC<=150?'OK':'CRÍTICO'}</span></td></tr>
+              <tr><td>Ticket Médio</td><td style={{fontWeight:700}}>{fmt(kpis.avgTicket)}</td><td>{'>'}{formatMoney(convertMoneyValue(300), { maximumFractionDigits: 0 })}</td><td><span className={`chart-card-badge ${kpis.avgTicket>=300?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.avgTicket>=300?'OK':'ATENÇÃO'}</span></td></tr>
             </tbody></table>
           </div></div>
         </div>
@@ -485,7 +484,7 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
           </div></div>
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Alertas Ativos</span></div><div className="chart-card-body" style={{padding:14}}>
             {kpis.noShowRate>10 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>No-Show Rate {kpis.noShowRate.toFixed(1)}% — acima da meta</span></div>}
-            {kpis.avgCAC>150 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>CAC {fmt(kpis.avgCAC)} — acima do teto R$150</span></div>}
+            {kpis.avgCAC>150 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>CAC {fmt(kpis.avgCAC)} — acima do teto {formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}</span></div>}
             {kpis.avgWait>15 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><span style={{color:'var(--text-secondary)',fontSize:12}}>Espera {kpis.avgWait.toFixed(0)}min — meta {'<'}15min</span></div>}
             {kpis.avgNPS<8 && <div style={{display:'flex',alignItems:'center',gap:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><span style={{color:'var(--text-secondary)',fontSize:12}}>NPS {kpis.avgNPS.toFixed(1)} — abaixo da meta 8.0</span></div>}
           </div></div>
@@ -506,15 +505,15 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
           </div>
         </div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">EBITDA</div><div className="overview-card-value">{fmt(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitda ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('EBITDA')}</div><div className="overview-card-value">{fmt(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitda ?? 0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Margem EBITDA</div><div className="overview-card-value" style={{ color: (financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitdaMargin ?? 0) >= 20 ? 'var(--green)' : 'var(--yellow)' }}>{(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitdaMargin ?? 0).toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">Aging {'>'}90d</div><div className="overview-card-value">{fmt(agingReceivables.buckets.find((b) => b.label === '>90d')?.value ?? 0)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Break-even</div><div className="overview-card-value">{fmt(breakEven.breakEvenRevenue)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle("Aging >90d")}</div><div className="overview-card-value">{fmt(agingReceivables.buckets.find((b) => b.label === '>90d')?.value ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Break-even')}</div><div className="overview-card-value">{fmt(breakEven.breakEvenRevenue)}</div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 DRE Semanal / EBITDA Operacional</span></div><div className="chart-card-body">
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
-              <ReactApexChart options={{ ...ct, chart: { type: 'bar' }, plotOptions: { bar: { colors: { ranges: [{ from: -9999999, to: -1, color: '#ef4444' }, { from: 0, to: 9999999, color: '#22c55e' }] }, columnWidth: '52%' } }, xaxis: { type: 'category' as const }, legend: { show: false }, dataLabels: { enabled: true, formatter: (v: number) => fmt(v) } }} series={[{ name: 'DRE', data: (() => { const l = financeAdvWeeks[financeAdvWeeks.length - 1]; if (!l) return []; return [{ x: 'RL', y: Math.round(l.netRevenue) }, { x: 'CMV', y: -Math.round(l.cmv) }, { x: 'Variaveis', y: -Math.round(l.variable) }, { x: 'Fixos', y: -Math.round(l.fixedProrata) }, { x: 'EBITDA', y: Math.round(l.ebitda) }]; })() }]} type="bar" height={250} />
+              <ReactApexChart options={{ ...ct, chart: { type: 'bar' }, plotOptions: { bar: { colors: { ranges: [{ from: -9999999, to: -1, color: '#ef4444' }, { from: 0, to: 9999999, color: '#22c55e' }] }, columnWidth: '52%' } }, xaxis: { type: 'category' as const }, legend: { show: false }, dataLabels: { enabled: true, formatter: (v: number) => fmt(v) }, tooltip: { y: { formatter: (v: number) => fmt(v) } } }} series={[{ name: 'DRE', data: (() => { const l = financeAdvWeeks[financeAdvWeeks.length - 1]; if (!l) return []; return [{ x: 'RL', y: Math.round(l.netRevenue) }, { x: 'CMV', y: -Math.round(l.cmv) }, { x: 'Variaveis', y: -Math.round(l.variable) }, { x: 'Fixos', y: -Math.round(l.fixedProrata) }, { x: 'EBITDA', y: Math.round(l.ebitda) }]; })() }]} type="bar" height={250} />
               <ReactApexChart options={{ ...ct, chart: { ...ct.chart, type: 'line' }, stroke: { curve: 'smooth' as const, width: [3, 2] }, colors: ['#22c55e', '#3b82f6'], xaxis: { ...ct.xaxis, categories: financeAdvWeeks.map((w) => w.label) }, annotations: { yaxis: [{ y: 20, borderColor: '#22c55e', strokeDashArray: 4, label: { text: 'Meta 20%', style: { color: '#fff', background: '#22c55e' } } }, { y: 15, borderColor: '#eab308', strokeDashArray: 4, label: { text: 'P2', style: { color: '#111', background: '#eab308' } } }, { y: 10, borderColor: '#ef4444', strokeDashArray: 4, label: { text: 'P1', style: { color: '#fff', background: '#ef4444' } } }] }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={[{ name: 'EBITDA %', data: financeAdvWeeks.map((w) => +w.ebitdaMargin.toFixed(1)) }, { name: 'Meta', data: financeAdvWeeks.map(() => 20) }]} type="line" height={250} />
             </div>
           </div></div>
@@ -606,16 +605,16 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
         <div className="section-header"><h2><span className="orange-bar" /> Marketing / Unit Economics</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Leads</div><div className="overview-card-value">{marketingProWeeks[marketingProWeeks.length-1]?.leadsTotal ?? 0}</div></div>
-          <div className="overview-card"><div className="overview-card-label">CAC Médio</div><div className="overview-card-value" style={{color:'var(--green)'}}>{fmt(marketingChannelStats.reduce((s,r)=>s+r.cac,0)/Math.max(1,marketingChannelStats.length))}</div></div>
-          <div className="overview-card"><div className="overview-card-label">LTV Médio</div><div className="overview-card-value">{fmt(marketingChannelStats.reduce((s,r)=>s+r.ltv,0)/Math.max(1,marketingChannelStats.length))}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('CAC Médio')}</div><div className="overview-card-value" style={{color:'var(--green)'}}>{fmt(marketingChannelStats.reduce((s,r)=>s+r.cac,0)/Math.max(1,marketingChannelStats.length))}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('LTV Médio')}</div><div className="overview-card-value">{fmt(marketingChannelStats.reduce((s,r)=>s+r.ltv,0)/Math.max(1,marketingChannelStats.length))}</div></div>
           <div className="overview-card"><div className="overview-card-label">LTV/CAC</div><div className="overview-card-value" style={{color:(marketingChannelStats.reduce((s,r)=>s+r.ltvCac,0)/Math.max(1,marketingChannelStats.length))>=3?'var(--green)':'var(--yellow)'}}>{(marketingChannelStats.reduce((s,r)=>s+r.ltvCac,0)/Math.max(1,marketingChannelStats.length)).toFixed(1)}x</div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 Leads por Canal / Semana</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',stacked:true,...channelClick.chart},plotOptions:{bar:{borderRadius:4,columnWidth:'55%'}},colors:['#ff5a1f','#3b82f6','#eab308','#22c55e','#8b5cf6','#45a29e'],xaxis:{...ct.xaxis,categories:marketingProWeeks.map(w=>w.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={activeChannels.map((ch)=>({name:ch.name,data:marketingProWeeks.map(w=>w.channelRows.find(r=>r.name===ch.name)?.leads ?? 0)}))} type="bar" height={240}/>
           </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">02 CAC por Canal (R$)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',...channelClick.chart},plotOptions:{bar:{distributed:true,columnWidth:'52%'}},colors:marketingChannelStats.map(r=>r.cac>r.avgTicket?'#ef4444':'#22c55e'),xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'CAC',data:marketingChannelStats.map(r=>Math.round(r.cac))},{name:'Ticket medio canal',data:marketingChannelStats.map(r=>Math.round(r.avgTicket))}]} type="bar" height={240}/>
+          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">{moneyTitle('02 CAC por Canal')}</span></div><div className="chart-card-body">
+            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',...channelClick.chart},plotOptions:{bar:{distributed:true,columnWidth:'52%'}},colors:marketingChannelStats.map(r=>r.cac>r.avgTicket?'#ef4444':'#22c55e'),xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const},tooltip:{y:{formatter:(v:number)=>fmt(v)}}}} series={[{name:'CAC',data:marketingChannelStats.map(r=>Math.round(r.cac))},{name:'Ticket medio canal',data:marketingChannelStats.map(r=>Math.round(r.avgTicket))}]} type="bar" height={240}/>
           </div></div>
         </div>
         <div className="chart-grid">
@@ -626,7 +625,7 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
             </div>
           </div></div>
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">04 LTV / LTV:CAC</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{columnWidth:'48%'}},colors:['#22c55e','#3b82f6','#ef4444'],xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'LTV',data:marketingChannelStats.map(r=>Math.round(r.ltv))},{name:'CAC',data:marketingChannelStats.map(r=>Math.round(r.cac))},{name:'LTV:CAC x10',data:marketingChannelStats.map(r=>+(r.ltvCac*10).toFixed(1))}]} type="bar" height={240}/>
+            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{columnWidth:'48%'}},colors:['#22c55e','#3b82f6','#ef4444'],xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const},tooltip:{y:{formatter:(v:number, ctx?: any)=>ctx?.seriesIndex === 2 ? `${v.toFixed(1)}x` : fmt(v)}}}} series={[{name:'LTV',data:marketingChannelStats.map(r=>Math.round(r.ltv))},{name:'CAC',data:marketingChannelStats.map(r=>Math.round(r.cac))},{name:'LTV:CAC x10',data:marketingChannelStats.map(r=>+(r.ltvCac*10).toFixed(1))}]} type="bar" height={240}/>
           </div></div>
         </div>
         <div className="chart-grid">
@@ -639,7 +638,7 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" 
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Waterfall Variacao de Receita</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{colors:{ranges:[{from:-999999,to:-1,color:'#ef4444'},{from:0,to:999999,color:'#22c55e'}]},columnWidth:'55%'}},xaxis:{type:'category' as const},legend:{show:false},dataLabels:{enabled:true,formatter:(v:number)=>fmt(v)}}} series={[{name:'Waterfall',data:(()=>{const cur=marketingProWeeks[marketingProWeeks.length-1]; const prev=marketingProWeeks[marketingProWeeks.length-2]; const prevRev=prev?.revenue ?? 0; const curRev=cur?.revenue ?? 0; const delta=curRev-prevRev; const vol=delta*0.35; const preco=delta*0.22; const mix=delta*0.16; const noShow=-Math.abs(delta*0.11); const ret=delta-(vol+preco+mix+noShow); return [{x:'Receita t-1',y:Math.round(prevRev)},{x:'Volume',y:Math.round(vol)},{x:'Preco',y:Math.round(preco)},{x:'Mix',y:Math.round(mix)},{x:'No-show',y:Math.round(noShow)},{x:'Retencao',y:Math.round(ret)},{x:'Receita t',y:Math.round(curRev)}];})()}]} type="bar" height={240}/>
+            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{colors:{ranges:[{from:-999999,to:-1,color:'#ef4444'},{from:0,to:999999,color:'#22c55e'}]},columnWidth:'55%'}},xaxis:{type:'category' as const},legend:{show:false},dataLabels:{enabled:true,formatter:(v:number)=>fmt(v)},tooltip:{y:{formatter:(v:number)=>fmt(v)}}}} series={[{name:'Waterfall',data:(()=>{const cur=marketingProWeeks[marketingProWeeks.length-1]; const prev=marketingProWeeks[marketingProWeeks.length-2]; const prevRev=prev?.revenue ?? 0; const curRev=cur?.revenue ?? 0; const delta=curRev-prevRev; const vol=delta*0.35; const preco=delta*0.22; const mix=delta*0.16; const noShow=-Math.abs(delta*0.11); const ret=delta-(vol+preco+mix+noShow); return [{x:'Receita t-1',y:Math.round(prevRev)},{x:'Volume',y:Math.round(vol)},{x:'Preco',y:Math.round(preco)},{x:'Mix',y:Math.round(mix)},{x:'No-show',y:Math.round(noShow)},{x:'Retencao',y:Math.round(ret)},{x:'Receita t',y:Math.round(curRev)}];})()}]} type="bar" height={240}/>
           </div></div>
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Regras de Negocio - Marketing Pro</span></div><div className="chart-card-body" style={{padding:12}}>
             <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Acao</th></tr></thead><tbody>

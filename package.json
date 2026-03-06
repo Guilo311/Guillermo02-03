@@ -11,6 +11,7 @@
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "pnpm run check:quality && tsc --noEmit",
     "check:quality": "tsx scripts/check-content-quality.ts",
+    "test:dashboard-api-seed": "tsx scripts/test-dashboard-api-seed.ts",
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"

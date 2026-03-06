@@ -1,19 +1,25 @@
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
-  controlTowerFacts,
   controlTowerCrmCredentials,
-  controlTowerIngestions,
   controlTowerRca,
-  type InsertControlTowerFactRecord,
   type InsertControlTowerCrmCredential,
-  type InsertControlTowerIngestion,
   type InsertControlTowerRca,
 } from "../drizzle/schema";
 import { enterprise } from "@shared/controlTowerRules";
 import type { ControlTowerFact, ControlTowerFilterState, IngestionParsedRow, RcaRecord } from "@shared/types";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
+import {
+  commitControlTowerIngestionBatch,
+  loadControlTowerFacts,
+  loadControlTowerIngestions,
+  resetControlTowerDataStore,
+  type ControlTowerStoredIngestion,
+} from "./domain/controlTowerDataStore";
+import { syncLocalAiPayloadToUser } from "./domain/localAiDashboardSync";
+import { kommoFullSyncUseCase } from "./application/useCases/kommoFullSyncUseCase";
+import { asaasFullSyncUseCase } from "./application/useCases/asaasFullSyncUseCase";
 
 const filterSchema = z.object({
   period: z.enum(["7d", "30d", "90d", "12m", "custom"]).default("30d"),
@@ -96,11 +102,11 @@ const moduleDashboardSchema = z.object({
 });
 
 const ingestionHealthSchema = z.object({
-  provider: z.enum(["kommo"]).optional(),
+  provider: z.enum(["kommo", "asaas"]).optional(),
 });
 
 const crmCredentialSchema = z.object({
-  provider: z.enum(["kommo"]).default("kommo"),
+  provider: z.enum(["kommo", "asaas"]).default("kommo"),
   accountDomain: z.string().min(3),
   accessToken: z.string().min(1),
   refreshToken: z.string().min(1),
@@ -108,40 +114,15 @@ const crmCredentialSchema = z.object({
   scope: z.string().optional(),
 });
 
-type InMemoryIngestion = {
-  id: number;
-  userId: number;
-  fileName: string;
-  fileType: "pdf" | "csv" | "xlsx" | "api" | "webhook" | "manual" | "crm";
-  status: "pending" | "committed" | "failed";
-  parsedRows: number;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-};
-
-const inMemoryIngestions: InMemoryIngestion[] = [];
-const inMemoryFacts: ControlTowerFact[] = [];
 const inMemoryRca: Array<RcaRecord & { userId: number }> = [];
-const inMemoryCrmCredentials = new Map<string, { userId: number; provider: "kommo"; accountDomain: string; expiresAt: string; scope?: string }>();
-let inMemoryIngestionId = 1;
+const inMemoryCrmCredentials = new Map<string, { userId: number; provider: "kommo" | "asaas"; accountDomain: string; expiresAt: string; scope?: string }>();
 let inMemoryRcaId = 1;
 
 export function __resetControlTowerMemory() {
-  inMemoryIngestions.length = 0;
-  inMemoryFacts.length = 0;
+  resetControlTowerDataStore();
   inMemoryRca.length = 0;
   inMemoryCrmCredentials.clear();
-  inMemoryIngestionId = 1;
   inMemoryRcaId = 1;
-}
-
-function toNumber(value: unknown): number {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
 }
 
 function toDate(value: string): Date {
@@ -154,20 +135,6 @@ function normalizeFilterValue(value: string | undefined): string | undefined {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed || trimmed === "all") return undefined;
   return trimmed;
-}
-
-function toFact(row: IngestionParsedRow, userId: number, ingestionId?: number): ControlTowerFact {
-  const entries = toNumber(row.entries);
-  const exits = toNumber(row.exits);
-  return {
-    ...row,
-    userId,
-    ingestionId,
-    entries,
-    exits,
-    revenueValue: entries - exits,
-    sourceType: row.sourceType ?? "upload",
-  };
 }
 
 function periodToDays(period: ControlTowerFilterState["period"]): number {
@@ -210,77 +177,15 @@ function applyFilters(rows: ControlTowerFact[], filters: ControlTowerFilterState
   });
 }
 
-function isLegacySeedFact(fact: ControlTowerFact) {
-  return String(fact.id).startsWith("seed-");
-}
-
 async function loadUserFacts(userId: number): Promise<ControlTowerFact[]> {
-  const db = await getDb();
-  if (!db) {
-    return inMemoryFacts.filter(fact => fact.userId === userId && !isLegacySeedFact(fact));
-  }
-
-  const rows = await db.select().from(controlTowerFacts).where(eq(controlTowerFacts.userId, userId)).orderBy(desc(controlTowerFacts.eventAt));
-  if (rows.length === 0) {
-    return [];
-  }
-
-  return rows.map(row => ({
-    id: String(row.id),
-    ingestionId: row.ingestionId,
-    userId: row.userId,
-    timestamp: row.eventAt.toISOString(),
-    channel: row.channel,
-    professional: row.professional,
-      procedure: row.procedureName,
-      status: row.status,
-      pipeline: row.pipeline ?? undefined,
-      unit: row.unit ?? undefined,
-      entries: toNumber(row.entries),
-    exits: toNumber(row.exits),
-    revenueValue: toNumber(row.revenueValue),
-    slotsAvailable: row.slotsAvailable,
-    slotsEmpty: row.slotsEmpty,
-    ticketMedio: toNumber(row.ticketMedio),
-    custoVariavel: toNumber(row.custoVariavel),
-    durationMinutes: row.durationMinutes,
-    materialList: Array.isArray(row.materialList) ? row.materialList.map(String) : [],
-    waitMinutes: row.waitMinutes,
-      npsScore: row.npsScore,
-      baseOldRevenueCurrent: toNumber(row.baseOldRevenueCurrent),
-      baseOldRevenuePrevious: toNumber(row.baseOldRevenuePrevious),
-      crmLeadId: row.crmLeadId ?? undefined,
-      sourceType: (row.sourceType as ControlTowerFact["sourceType"] | null) ?? undefined,
-    }));
+  return loadControlTowerFacts(userId);
 }
 
-async function loadUserIngestions(userId: number): Promise<InMemoryIngestion[]> {
-  const db = await getDb();
-  if (!db) {
-    return inMemoryIngestions
-      .filter(item => item.userId === userId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }
-
-  const rows = await db
-    .select()
-    .from(controlTowerIngestions)
-    .where(eq(controlTowerIngestions.userId, userId))
-    .orderBy(desc(controlTowerIngestions.createdAt));
-
-  return rows.map(row => ({
-    id: row.id,
-    userId: row.userId,
-    fileName: row.fileName,
-    fileType: row.fileType as InMemoryIngestion["fileType"],
-    status: row.status,
-    parsedRows: row.parsedRows,
-    metadata: (row.metadata as Record<string, unknown> | null) ?? null,
-    createdAt: row.createdAt.toISOString(),
-  }));
+async function loadUserIngestions(userId: number): Promise<ControlTowerStoredIngestion[]> {
+  return loadControlTowerIngestions(userId);
 }
 
-function deriveIngestionHealth(facts: ControlTowerFact[], ingestions: InMemoryIngestion[]) {
+function deriveIngestionHealth(facts: ControlTowerFact[], ingestions: ControlTowerStoredIngestion[]) {
   const now = Date.now();
   const lastSyncAt = ingestions[0]?.createdAt ?? null;
   const recentIngestions = ingestions.filter(item => now - new Date(item.createdAt).getTime() <= 86_400_000);
@@ -330,6 +235,15 @@ function deriveIngestionHealth(facts: ControlTowerFact[], ingestions: InMemoryIn
         label: "Kommo CRM",
         provider: "OAuth + Webhook + REST Sync",
         status: connectorStatus(hasCrmIngestion, { allowDegraded: true }),
+        lastSyncAt,
+        slaMinutes: anyRecentSync ? 5 : 0,
+        failures24h: failedRecentIngestions,
+      },
+      {
+        key: "asaas",
+        label: "Asaas Billing",
+        provider: "Webhook + REST Sync",
+        status: connectorStatus(hasApiIngestion, { allowDegraded: true }),
         lastSyncAt,
         slaMinutes: anyRecentSync ? 5 : 0,
         failures24h: failedRecentIngestions,
@@ -565,75 +479,52 @@ export const controlTowerRouter = router({
   commitIngestionBatch: protectedProcedure
     .input(commitSchema)
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user!.id;
-      const facts = input.rows.map(row => toFact(row, userId));
-      const db = await getDb();
-
-      if (!db) {
-        const ingestionId = inMemoryIngestionId++;
-        const ingestion: InMemoryIngestion = {
-          id: ingestionId,
-          userId,
-          fileName: input.fileName,
-          fileType: input.fileType,
-          status: "committed",
-          parsedRows: input.rows.length,
-          metadata: input.metadata ?? null,
-          createdAt: new Date().toISOString(),
-        };
-        inMemoryIngestions.push(ingestion);
-        facts.forEach(fact => inMemoryFacts.push({ ...fact, ingestionId }));
-
-        return {
-          success: true,
-          ingestionId,
-          insertedRows: facts.length,
-        };
-      }
-
-      const ingestionPayload: InsertControlTowerIngestion = {
-        userId,
+      const result = await commitControlTowerIngestionBatch({
+        userId: ctx.user!.id,
         fileName: input.fileName,
         fileType: input.fileType,
-        status: "committed",
-        parsedRows: input.rows.length,
-        metadata: input.metadata ?? null,
-      };
-      const ingestionResult = await db.insert(controlTowerIngestions).values(ingestionPayload as any);
-      const ingestionId = ingestionResult[0]?.insertId as number;
+        rows: input.rows,
+        metadata: input.metadata,
+      });
 
-      const factsPayload: InsertControlTowerFactRecord[] = facts.map(fact => ({
-        ingestionId,
-        userId,
-        eventAt: toDate(fact.timestamp),
-        channel: fact.channel,
-        professional: fact.professional,
-        procedureName: fact.procedure,
-        status: fact.status,
-        pipeline: fact.pipeline,
-        unit: fact.unit,
-        entries: fact.entries.toString(),
-        exits: fact.exits.toString(),
-        revenueValue: fact.revenueValue.toString(),
-        slotsAvailable: fact.slotsAvailable,
-        slotsEmpty: fact.slotsEmpty,
-        ticketMedio: fact.ticketMedio.toString(),
-        custoVariavel: fact.custoVariavel.toString(),
-        durationMinutes: fact.durationMinutes,
-        materialList: fact.materialList,
-        waitMinutes: fact.waitMinutes,
-        npsScore: fact.npsScore,
-        baseOldRevenueCurrent: fact.baseOldRevenueCurrent.toString(),
-        baseOldRevenuePrevious: fact.baseOldRevenuePrevious.toString(),
-        crmLeadId: fact.crmLeadId,
-        sourceType: fact.sourceType ?? "upload",
-      }));
-      await db.insert(controlTowerFacts).values(factsPayload as any);
+      let adminSyncWarning: string | undefined;
+      try {
+        await syncLocalAiPayloadToUser({
+          userId: ctx.user!.id,
+          clientName: ctx.user?.name || ctx.user?.email || `Cliente ${ctx.user!.id}`,
+          records: input.rows.map((row) => ({
+            id: row.id,
+            timestamp: row.timestamp,
+            channel: row.channel,
+            professional: row.professional,
+            procedure: row.procedure,
+            status: row.status,
+            pipeline: row.pipeline,
+            unit: row.unit,
+            sourceType: row.sourceType,
+            leadId: row.crmLeadId,
+            revenueGross: row.entries,
+            revenueNet: row.entries,
+            directCost: row.custoVariavel,
+            fixedCost: Math.max(0, row.exits - row.custoVariavel),
+            ticketMedio: row.ticketMedio,
+            slotsAvailable: row.slotsAvailable,
+            slotsEmpty: row.slotsEmpty,
+            durationMinutes: row.durationMinutes,
+            waitMinutes: row.waitMinutes,
+            npsScore: row.npsScore,
+            materialList: row.materialList,
+            baseOldRevenueCurrent: row.baseOldRevenueCurrent,
+            baseOldRevenuePrevious: row.baseOldRevenuePrevious,
+          })),
+        });
+      } catch (error) {
+        adminSyncWarning = error instanceof Error ? error.message : String(error);
+      }
 
       return {
-        success: true,
-        ingestionId,
-        insertedRows: facts.length,
+        ...result,
+        adminSyncWarning,
       };
     }),
 
@@ -747,14 +638,19 @@ export const controlTowerRouter = router({
     }),
 
   syncKommoNow: protectedProcedure
-    .input(z.object({ provider: z.enum(["kommo"]).default("kommo") }).optional())
-    .mutation(async ({ ctx }) => {
+    .input(z.object({ provider: z.enum(["kommo", "asaas"]).default("kommo") }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const provider = input?.provider ?? "kommo";
+      const result =
+        provider === "kommo"
+          ? await kommoFullSyncUseCase({ userId: ctx.user!.id, provider: "kommo" })
+          : await asaasFullSyncUseCase({ userId: ctx.user!.id });
       const facts = await loadUserFacts(ctx.user!.id);
       const snapshot = enterprise.buildSnapshot(facts);
       return {
         success: true,
-        provider: "kommo" as const,
-        syncedAt: new Date().toISOString(),
+        provider,
+        syncedAt: result.syncedAt,
         snapshot,
       };
     }),

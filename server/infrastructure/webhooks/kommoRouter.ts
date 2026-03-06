@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { createHash } from "node:crypto";
 import { processKommoWebhookUseCase } from "../../application/useCases/processKommoWebhookUseCase";
+import { findProviderConfigByWebhookToken } from "../../db";
+import { normalizeKommoPayload } from "../../domain/integrationEventNormalizer";
+import { enqueueIntegrationEvent } from "../../domain/integrationQueue";
 import { ENV } from "../../_core/env";
 
 function resolveWebhookEventId(payload: unknown): string {
@@ -30,11 +33,24 @@ kommoWebhookRouter.post("/webhook", async (req, res) => {
   try {
     const signature = req.header("x-signature") ?? req.header("x-kommo-signature") ?? undefined;
     const eventId = resolveWebhookEventId(req.body);
+    const config = await findProviderConfigByWebhookToken("kommo", signature ?? ENV.kommoWebhookSecret);
     const result = await processKommoWebhookUseCase({
       eventId,
       signature,
       payload: req.body,
+      expectedSecret: config?.webhookSecret ?? ENV.kommoWebhookSecret,
     });
+
+    if (result.accepted && config) {
+      const envelopes = normalizeKommoPayload(req.body, req.header("content-type") ?? undefined, signature);
+      for (const envelope of envelopes) {
+        await enqueueIntegrationEvent({
+          userId: config.userId,
+          provider: "kommo",
+          envelope,
+        });
+      }
+    }
 
     res.status(result.accepted ? 200 : 401).json({
       ok: result.accepted,

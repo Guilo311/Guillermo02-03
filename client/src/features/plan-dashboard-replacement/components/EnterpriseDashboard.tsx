@@ -1,11 +1,12 @@
 import { useMemo, useCallback, memo } from 'react';
 import ReactApexChart from 'react-apexcharts';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { getChartTheme } from '../utils/chartOptions';
 import FilterBar from './FilterBar';
 import {
-  Filters, getAllAppointments, applyFilters, computeKPIs,
-  computeByProfessional, computeByChannel, computeByProcedure,
-  computeByWeekday, computeWeeklyTrend,
+  type Appointment, Filters, getAllAppointments, applyFilters, computeKPIs,
+  computeByProfessional, computeByChannel, computeByProcedure, computeByUnit,
+  computeByWeekday, computeWeeklyTrend, getFilterOptions,
 } from '../data/mockData';
 
 interface Props {
@@ -14,22 +15,21 @@ interface Props {
   theme: 'dark' | 'light';
   filters: Filters;
   onFiltersChange: (f: Filters) => void;
+  appointments?: Appointment[];
 }
 
-function fmt(n: number): string {
-  if (n >= 1000000) return `R$ ${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `R$ ${(n / 1000).toFixed(1)}k`;
-  return `R$ ${n.toFixed(0)}`;
-}
-
-function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" }: Props) {
+function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT", appointments }: Props) {
+  const { currency, convertMoneyValue, formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
+  const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
   const ct = useMemo(() => getChartTheme(theme), [theme]);
-  const allData = useMemo(() => getAllAppointments(), []);
+  const allData = useMemo(() => appointments ?? getAllAppointments(), [appointments]);
+  const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
   const kpis = useMemo(() => computeKPIs(filtered), [filtered]);
   const byProf = useMemo(() => computeByProfessional(filtered), [filtered]);
   const byChannel = useMemo(() => computeByChannel(filtered), [filtered]);
   const byProc = useMemo(() => computeByProcedure(filtered), [filtered]);
+  const byUnit = useMemo(() => computeByUnit(filtered), [filtered]);
   const byWeekday = useMemo(() => computeByWeekday(filtered), [filtered]);
   const weeklyTrend = useMemo(() => computeWeeklyTrend(filtered), [filtered]);
   const activeChannels = useMemo(() => byChannel.filter(c => c.total > 0), [byChannel]);
@@ -43,28 +43,34 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
   const ltv = kpis.avgTicket * 6;
   const payback = kpis.avgTicket > 0 && kpis.margin > 0 ? Math.ceil(kpis.avgCAC / (kpis.avgTicket * kpis.margin / 100)) : 0;
   const networkUnits = useMemo(() => {
-    const rows = [
-      { name: 'Jardins', factor: 0.55, team: 7 },
-      { name: 'Paulista', factor: 0.45, team: 5 },
-      { name: 'Moema', factor: 0.28, team: 4 },
-    ];
-    return rows.map((u, idx) => {
-      const revenue = kpis.grossRevenue * u.factor;
-      const ebitdaUnit = revenue * (0.22 - idx * 0.035);
+    return byUnit.map((unit, idx) => {
+      const revenue = unit.grossRevenue;
+      const ebitdaUnit = revenue * (0.22 - idx * 0.03);
       const margin = revenue ? (ebitdaUnit / revenue) * 100 : 0;
-      const cash = revenue * (0.12 + (idx === 0 ? 0.06 : 0.03));
-      const nps = Math.max(6.5, Math.min(9.1, kpis.avgNPS + (idx === 0 ? 0.4 : idx === 1 ? -0.4 : -0.9)));
-      const occupancy = Math.max(58, Math.min(92, kpis.occupancyRate + (idx === 0 ? 1.8 : idx === 1 ? -2.3 : -6.5)));
-      const noShow = Math.max(4, kpis.noShowRate + (idx === 0 ? -1.1 : idx === 1 ? 1.0 : 2.8));
+      const cash = revenue * (0.11 + (idx % 3) * 0.025);
+      const nps = Math.max(6.2, Math.min(9.4, unit.avgNPS + (idx === 0 ? 0.2 : -0.15)));
+      const occupancy = Math.max(48, Math.min(94, unit.occupancyRate + (idx % 2 === 0 ? 1.2 : -1.4)));
+      const noShow = Math.max(2, unit.noShowRate + idx * 0.8);
       const months = ['M-2', 'M-1', 'M0'].map((m, mIdx) => ({
         label: m,
-        revenue: revenue * (0.90 + mIdx * 0.06 - idx * 0.02),
-        ebitda: ebitdaUnit * (0.82 + mIdx * 0.10 - idx * 0.03),
+        revenue: revenue * (0.92 + mIdx * 0.05 - idx * 0.015),
+        ebitda: ebitdaUnit * (0.84 + mIdx * 0.08 - idx * 0.02),
       }));
-      return { ...u, revenue, ebitda: ebitdaUnit, margin, cash, nps, occupancy, noShow, months };
+      return {
+        name: unit.name,
+        team: Math.max(2, Math.round(unit.total / 18) + 2),
+        revenue,
+        ebitda: ebitdaUnit,
+        margin,
+        cash,
+        nps,
+        occupancy,
+        noShow,
+        months,
+      };
     });
-  }, [kpis.grossRevenue, kpis.avgNPS, kpis.occupancyRate, kpis.noShowRate]);
-  const networkActiveUnits = useMemo(() => networkUnits.slice(0, 2), [networkUnits]);
+  }, [byUnit]);
+  const networkActiveUnits = useMemo(() => networkUnits, [networkUnits]);
   const enterpriseConsolidated = useMemo(() => {
     const totalRevenue = networkActiveUnits.reduce((s, u) => s + u.revenue, 0);
     const weighted = (key: 'margin' | 'nps' | 'occupancy' | 'noShow') =>
@@ -201,16 +207,16 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
 
   return (
     <div className="animate-fade-in" key={activeTab}>
-      <FilterBar filters={filters} onChange={onFiltersChange} showUnit={true} />
+      <FilterBar filters={filters} onChange={onFiltersChange} showUnit={true} options={filterOptions} />
 
       {/* ===== TAB 0: VISÃO CEO ENTERPRISE ===== */}
       {activeTab === 0 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Visão CEO — Enterprise</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">{ lang === "EN" ? "Estimated Valuation" : lang === "ES" ? "Valuación Estimada" : "Valuation Estimado" }</div><div className="overview-card-value" style={{color:'var(--accent)'}}>{fmt(valuation)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--accent)'}}/><span>8x EBITDA</span></div></div>
-          <div className="overview-card"><div className="overview-card-label">EBITDA</div><div className="overview-card-value">{fmt(ebitda)}</div><div className="overview-card-info"><div className="dot" style={{background:ebitdaMargin>=15?'var(--green)':'var(--yellow)'}}/><span>Margem {ebitdaMargin.toFixed(1)}%</span></div></div>
-          <div className="overview-card"><div className="overview-card-label">Receita</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Unidades Ativas</div><div className="overview-card-value">2</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Jardins + Paulista</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle(lang === "EN" ? "Estimated Valuation" : lang === "ES" ? "Valuación Estimada" : "Valuation Estimado")}</div><div className="overview-card-value" style={{color:'var(--accent)'}}>{fmt(valuation)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--accent)'}}/><span>8x EBITDA</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('EBITDA')}</div><div className="overview-card-value">{fmt(ebitda)}</div><div className="overview-card-info"><div className="dot" style={{background:ebitdaMargin>=15?'var(--green)':'var(--yellow)'}}/><span>Margem {ebitdaMargin.toFixed(1)}%</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita')}</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">Unidades Ativas</div><div className="overview-card-value">{networkActiveUnits.length}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Base consolidada</span></div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">{ lang === "EN" ? "Revenue Evolution (Network)" : lang === "ES" ? "Evolución Ingresos (Red)" : "Evolução Receita (Rede)" }</span></div><div className="chart-card-body">
@@ -231,7 +237,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
               <tr><td>Ocupação</td><td style={{fontWeight:700}}>{kpis.occupancyRate.toFixed(1)}%</td><td>{'>'}75%</td><td><span className={`chart-card-badge ${kpis.occupancyRate>=75?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.occupancyRate>=75?'OK':'ATENÇÃO'}</span></td></tr>
               <tr><td>NPS</td><td style={{fontWeight:700}}>{kpis.avgNPS.toFixed(1)}</td><td>{'>'}8.0</td><td><span className={`chart-card-badge ${kpis.avgNPS>=8?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.avgNPS>=8?'OK':'ATENÇÃO'}</span></td></tr>
               <tr><td>Receita Perdida</td><td style={{fontWeight:700,color:'var(--red)'}}>{fmt(lostRevenue)}</td><td>{'<'}5%</td><td><span className={`chart-card-badge ${lostRevenue/kpis.grossRevenue<0.05?'green':'red'}`} style={{display:'inline-block'}}>{lostRevenue/kpis.grossRevenue<0.05?'OK':'CRÍTICO'}</span></td></tr>
-              <tr><td>Receita/Funcionário</td><td style={{fontWeight:700}}>{fmt(revenuePerEmployee)}</td><td>{'>'}R$4k</td><td><span className={`chart-card-badge ${revenuePerEmployee>=4000?'green':'yellow'}`} style={{display:'inline-block'}}>{revenuePerEmployee>=4000?'OK':'ATENÇÃO'}</span></td></tr>
+              <tr><td>{moneyTitle('Receita/Funcionário')}</td><td style={{fontWeight:700}}>{fmt(revenuePerEmployee)}</td><td>{'>'}{formatCompactMoney(4000)}</td><td><span className={`chart-card-badge ${revenuePerEmployee>=4000?'green':'yellow'}`} style={{display:'inline-block'}}>{revenuePerEmployee>=4000?'OK':'ATENÇÃO'}</span></td></tr>
             </tbody></table>
           </div></div>
         </div>
@@ -243,7 +249,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Alertas P1</div><div className="overview-card-value" style={{color:'var(--red)'}}>{(kpis.noShowRate>10?1:0)+(kpis.avgCAC>150?1:0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Alertas P2</div><div className="overview-card-value" style={{color:'var(--yellow)'}}>{(kpis.avgWait>15?1:0)+(kpis.avgNPS<8?1:0)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Receita em Risco</div><div className="overview-card-value" style={{color:'var(--red)'}}>{fmt(lostRevenue)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita em Risco')}</div><div className="overview-card-value" style={{color:'var(--red)'}}>{fmt(lostRevenue)}</div></div>
           <div className="overview-card"><div className="overview-card-label">SLA Cumprimento</div><div className="overview-card-value" style={{color:kpis.occupancyRate>=70?'var(--green)':'var(--red)'}}>{kpis.occupancyRate>=70?'✓ OK':'✗ Em risco'}</div></div>
         </div>
         <div className="chart-grid">
@@ -256,7 +262,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         </div>
         <div className="detail-section"><div className="detail-section-header">🚨 Plano de Ação Enterprise</div><div className="detail-section-body" style={{fontSize:13}}>
           {kpis.noShowRate>10 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><div><strong style={{color:'var(--text-primary)'}}>No-Show Rate {kpis.noShowRate.toFixed(1)}%</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Implementar confirmação D-2 via WhatsApp + SMS. Responsável: Ops. Prazo: 7 dias.</p></div></div>}
-          {kpis.avgCAC>150 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><div><strong style={{color:'var(--text-primary)'}}>CAC {fmt(kpis.avgCAC)} — acima do teto</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Auditar campanhas Google Ads, pausar keywords não-performáticas. Resp: Marketing. Prazo: 3 dias.</p></div></div>}
+          {kpis.avgCAC>150 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><div><strong style={{color:'var(--text-primary)'}}>CAC {fmt(kpis.avgCAC)} — acima do teto {formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Auditar campanhas Google Ads, pausar keywords não-performáticas. Resp: Marketing. Prazo: 3 dias.</p></div></div>}
           {kpis.avgWait>15 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><div><strong style={{color:'var(--text-primary)'}}>Tempo Espera {kpis.avgWait.toFixed(0)}min</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Redistribuir agenda para reduzir gaps. Resp: Coordenação. Prazo: 14 dias.</p></div></div>}
           {kpis.avgNPS<8 && <div style={{display:'flex',alignItems:'center',gap:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><div><strong style={{color:'var(--text-primary)'}}>NPS {kpis.avgNPS.toFixed(1)} — abaixo da meta</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Pesquisa qualitativa com detratores. Resp: Qualidade. Prazo: 14 dias.</p></div></div>}
         </div></div>
@@ -267,7 +273,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         <div className="section-header"><h2><span className="orange-bar" /> Financeiro - Visao Investidor</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">V01 Multiplo EBITDA</div><div className="overview-card-value" style={{color:investorModel.adjustedMultiple>5?'var(--green)':investorModel.adjustedMultiple<3?'var(--red)':'var(--yellow)'}}>{investorModel.adjustedMultiple.toFixed(1)}x</div></div>
-          <div className="overview-card"><div className="overview-card-label">V03 Valuation Rede</div><div className="overview-card-value" style={{color:'var(--accent)'}}>{fmt(investorModel.valuationNow)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('V03 Valuation Rede')}</div><div className="overview-card-value" style={{color:'var(--accent)'}}>{fmt(investorModel.valuationNow)}</div></div>
           <div className="overview-card"><div className="overview-card-label">V04 Payback (M&A)</div><div className="overview-card-value">{investorModel.deal.paybackYears.toFixed(1)} anos</div></div>
           <div className="overview-card"><div className="overview-card-label">V06 Risco Estrutural</div><div className="overview-card-value" style={{color:investorModel.structuralRisk>70?'var(--red)':investorModel.structuralRisk<30?'var(--green)':'var(--yellow)'}}>{investorModel.structuralRisk.toFixed(0)}</div></div>
         </div>
@@ -290,7 +296,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Total</div><div className="overview-card-value">{kpis.total}</div></div>
           <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">Receita Perdida</div><div className="overview-card-value" style={{color:'var(--red)'}}>{fmt(lostRevenue)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Perdida')}</div><div className="overview-card-value" style={{color:'var(--red)'}}>{fmt(lostRevenue)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Slots Ociosos</div><div className="overview-card-value">{Math.round(kpis.total*(1-kpis.occupancyRate/100))}</div></div>
         </div>
         <div className="chart-grid">
@@ -316,16 +322,16 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         <div className="section-header"><h2><span className="orange-bar" /> Marketing / Unit Economics</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Leads</div><div className="overview-card-value">{kpis.leads}</div></div>
-          <div className="overview-card"><div className="overview-card-label">CAC</div><div className="overview-card-value" style={{color:kpis.avgCAC>150?'var(--red)':'var(--green)'}}>{fmt(kpis.avgCAC)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">LTV (6 visitas)</div><div className="overview-card-value">{fmt(ltv)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('CAC')}</div><div className="overview-card-value" style={{color:kpis.avgCAC>150?'var(--red)':'var(--green)'}}>{fmt(kpis.avgCAC)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('LTV (6 visitas)')}</div><div className="overview-card-value">{fmt(ltv)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Payback (meses)</div><div className="overview-card-value">{payback || '–'}</div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Funil de Conversão</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,barHeight:'60%'}},colors:['#ff5a1f'],xaxis:{...ct.xaxis,categories:['Leads','Qualificados','Agendados','Realizados','Retornos','Promotores']},dataLabels:{enabled:true}}} series={[{name:'Volume',data:[kpis.leads,Math.round(kpis.leads*0.6),Math.round(kpis.leads*0.4),kpis.realized,Math.round(kpis.realized*kpis.returnRate/100),kpis.promoters]}]} type="bar" height={220}/>
           </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">CAC por Canal</span><span style={{fontSize:10,color:'var(--text-muted)'}}>🔍 Clique</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',...channelClick.chart},plotOptions:{bar:{distributed:true,columnWidth:'50%'}},colors:['#ff5a1f','#3b82f6','#eab308','#22c55e','#8b5cf6','#45a29e'],xaxis:{...ct.xaxis,categories:activeChannels.map(c=>c.name)},legend:{show:false},annotations:{yaxis:[{y:150,borderColor:'#ef4444',label:{text:'Teto CAC R$150',style:{color:'#fff',background:'#ef4444'}}}]}}} series={[{name:'CAC',data:activeChannels.map(c=>Math.round(c.avgCAC))}]} type="bar" height={220}/>
+          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">{moneyTitle('CAC por Canal')}</span><span style={{fontSize:10,color:'var(--text-muted)'}}>🔍 Clique</span></div><div className="chart-card-body">
+            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',...channelClick.chart},plotOptions:{bar:{distributed:true,columnWidth:'50%'}},colors:['#ff5a1f','#3b82f6','#eab308','#22c55e','#8b5cf6','#45a29e'],xaxis:{...ct.xaxis,categories:activeChannels.map(c=>c.name)},legend:{show:false},annotations:{yaxis:[{y:150,borderColor:'#ef4444',label:{text:`Teto CAC ${formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}`,style:{color:'#fff',background:'#ef4444'}}}]},tooltip:{y:{formatter:(v:number)=>fmt(v)}}}} series={[{name:'CAC',data:activeChannels.map(c=>Math.round(c.avgCAC))}]} type="bar" height={220}/>
           </div></div>
         </div>
         <div className="chart-grid">
@@ -343,8 +349,8 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         <div className="section-header"><h2><span className="orange-bar" /> Multi-Unidade</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Unidades Ativas</div><div className="overview-card-value">{networkActiveUnits.length}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Base consolidada</span></div></div>
-          <div className="overview-card"><div className="overview-card-label">Receita Consolidada</div><div className="overview-card-value">{fmt(enterpriseConsolidated.revenue)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">EBITDA Consolidado</div><div className="overview-card-value" style={{color:enterpriseConsolidated.ebitda>=0?'var(--green)':'var(--red)'}}>{fmt(enterpriseConsolidated.ebitda)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Consolidada')}</div><div className="overview-card-value">{fmt(enterpriseConsolidated.revenue)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('EBITDA Consolidado')}</div><div className="overview-card-value" style={{color:enterpriseConsolidated.ebitda>=0?'var(--green)':'var(--red)'}}>{fmt(enterpriseConsolidated.ebitda)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Score da Rede</div><div className="overview-card-value" style={{color:enterpriseConsolidated.score>65?'var(--green)':enterpriseConsolidated.score<40?'var(--red)':'var(--yellow)'}}>{enterpriseConsolidated.score.toFixed(0)}</div></div>
         </div>
         <div className="detail-section"><div className="detail-section-header">E01 Consolidação Multi-Unidade (ponderação por receita)</div><div className="detail-section-body"><table className="data-table"><thead><tr><th>Unidade</th><th>Receita</th><th>EBITDA</th><th>Margem</th><th>Caixa</th><th>NPS</th><th>Equipe</th></tr></thead><tbody>

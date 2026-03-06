@@ -1,35 +1,27 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo, KeyboardEvent, MouseEvent } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { Moon, Sun } from 'lucide-react';
+import { Bell, CircleHelp, Menu, Moon, Settings, Sun } from 'lucide-react';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { Language } from '@/i18n/index';
 import { normalizePlanTier } from '@shared/controlTowerRules';
+import { trpc } from '@/lib/trpc';
 import EssentialDashboard from './components/EssentialDashboard';
 import ProDashboard from './components/ProDashboard';
 import EnterpriseDashboard from './components/EnterpriseDashboard';
-import { Filters, defaultFilters } from './data/mockData';
+import { Filters, controlTowerFactsToAppointments, defaultFilters } from './data/mockData';
+import { buildDashboardCsv, extractDashboardSections } from './utils/csvExport';
 import { exportDashboardPDF } from './utils/pdfExport';
+import { getDashboardExportPolicy } from './utils/exportPolicy';
+import { buildDashboardApiFilters } from './utils/filterState';
+import { translateDashboardText, useTranslation } from './i18n';
+import { resolveKpiMeta, type KpiMeta, type KpiSourceMode } from './utils/kpiMeta';
 import './scoped.css';
 
 type Theme = 'dark' | 'light';
 type Lang = 'PT' | 'EN' | 'ES';
 type Plan = 'ESSENTIAL' | 'PRO' | 'ENTERPRISE';
-
-type ExportCapability = {
-  allowCsv: boolean;
-  allowPdf: boolean;
-  reason?: string;
-};
-
-const FINANCIAL_EXPORT_ROLES = new Set([
-  'ADMIN',
-  'CEO',
-  'MANAGER',
-  'NETWORK_OWNER',
-  'NETWORK_EXEC',
-  'FINANCE_LEAD',
-]);
 
 function toDashboardLang(language: Language): Lang {
   if (language === 'en') return 'EN';
@@ -56,6 +48,47 @@ function planLabel(plan: Plan): string {
   return 'Essential';
 }
 
+function getExplainActionLabel(language: Language) {
+  if (language === 'en') return 'open calculation and source';
+  if (language === 'es') return 'abrir cálculo y fuente';
+  return 'abrir cálculo e fonte';
+}
+
+function translateKpiMeta(meta: KpiMeta, language: Language): KpiMeta {
+  return {
+    ...meta,
+    label: translateDashboardText(meta.label, language),
+    formula: translateDashboardText(meta.formula, language),
+    howToCalculate: translateDashboardText(meta.howToCalculate, language),
+    sources: meta.sources.map((source) => translateDashboardText(source, language)),
+    fields: meta.fields,
+    note: meta.note ? translateDashboardText(meta.note, language) : undefined,
+  };
+}
+
+function translateRenderedDashboard(root: HTMLElement | null, language: Language) {
+  if (!root || language === 'pt') return;
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let current = walker.nextNode();
+  while (current) {
+    nodes.push(current as Text);
+    current = walker.nextNode();
+  }
+
+  nodes.forEach((node) => {
+    const raw = node.textContent;
+    if (!raw) return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const translated = translateDashboardText(trimmed, language);
+    if (translated !== trimmed) {
+      node.textContent = raw.replace(trimmed, translated);
+    }
+  });
+}
+
 function resolveExportRole(user: unknown): string {
   if (!user || typeof user !== 'object') return 'CLIENTE';
   const record = user as Record<string, unknown>;
@@ -70,33 +103,6 @@ function resolveExportRole(user: unknown): string {
     'cliente';
 
   return String(candidate).trim().toUpperCase();
-}
-
-function getExportCapability(plan: Plan, role: string, activeTab: number): ExportCapability {
-  if (plan === 'ESSENTIAL') {
-    return {
-      allowCsv: false,
-      allowPdf: false,
-      reason: 'Plano Essencial permite apenas PDF executivo mensal automático.',
-    };
-  }
-
-  const isFinancialTab =
-    (plan === 'PRO' && activeTab === 2) ||
-    (plan === 'ENTERPRISE' && activeTab === 2);
-
-  if (isFinancialTab && !FINANCIAL_EXPORT_ROLES.has(role)) {
-    return {
-      allowCsv: false,
-      allowPdf: false,
-      reason: 'Seu perfil não possui permissão para exportação financeira.',
-    };
-  }
-
-  return {
-    allowCsv: true,
-    allowPdf: true,
-  };
 }
 
 const sidebarMenus: Record<Plan, { items: string[] }> = {
@@ -141,6 +147,120 @@ const i18n: Record<Lang, Record<string, string>> = {
     escuro: 'Oscuro', claro: 'Claro',
     refreshMsg: '¡Datos actualizados!', csvMsg: '¡CSV exportado!', pdfMsg: '¡PDF generado!',
     pdfGenerating: 'Generando PDF...',
+  },
+};
+
+const exportLocaleByLang: Record<Lang, string> = {
+  PT: 'pt-BR',
+  EN: 'en-US',
+  ES: 'es-ES',
+};
+
+const csvLabelsByLang: Record<Lang, Parameters<typeof buildDashboardCsv>[0]["labels"]> = {
+  PT: {
+    exportTitle: 'Export GLX Dashboard',
+    report: 'Relatório',
+    plan: 'Plano',
+    currency: 'Moeda',
+    generatedAt: 'Gerado em',
+    activeFilters: 'Filtros ativos',
+    tab: 'Aba',
+    kpis: 'KPIs',
+    indicator: 'Indicador',
+    value: 'Valor',
+    table: 'Tabela',
+  },
+  EN: {
+    exportTitle: 'GLX Dashboard Export',
+    report: 'Report',
+    plan: 'Plan',
+    currency: 'Currency',
+    generatedAt: 'Generated at',
+    activeFilters: 'Active filters',
+    tab: 'Tab',
+    kpis: 'KPIs',
+    indicator: 'Indicator',
+    value: 'Value',
+    table: 'Table',
+  },
+  ES: {
+    exportTitle: 'Exportación Dashboard GLX',
+    report: 'Informe',
+    plan: 'Plan',
+    currency: 'Moneda',
+    generatedAt: 'Generado en',
+    activeFilters: 'Filtros activos',
+    tab: 'Pestaña',
+    kpis: 'KPIs',
+    indicator: 'Indicador',
+    value: 'Valor',
+    table: 'Tabla',
+  },
+};
+
+const pdfLabelsByLang = {
+  PT: {
+    page: 'Página',
+    of: 'de',
+    confidential: 'GLX Performance Control Tower - Confidencial',
+    rights: '© 2026 GLX Partners. Todos os direitos reservados.',
+    tab: 'Aba',
+    indicator: 'Indicador / KPI',
+    consolidatedValue: 'Valor consolidado',
+    detail: 'Detalhamento',
+  },
+  EN: {
+    page: 'Page',
+    of: 'of',
+    confidential: 'GLX Performance Control Tower - Confidential',
+    rights: '© 2026 GLX Partners. All rights reserved.',
+    tab: 'Tab',
+    indicator: 'Indicator / KPI',
+    consolidatedValue: 'Consolidated value',
+    detail: 'Detail',
+  },
+  ES: {
+    page: 'Página',
+    of: 'de',
+    confidential: 'GLX Performance Control Tower - Confidencial',
+    rights: '© 2026 GLX Partners. Todos los derechos reservados.',
+    tab: 'Pestaña',
+    indicator: 'Indicador / KPI',
+    consolidatedValue: 'Valor consolidado',
+    detail: 'Detalle',
+  },
+};
+
+const exportFilterLabelsByLang: Record<Lang, { period: string; channel: string; professional: string; procedure: string; status: string; unit: string; severity: string; all: string; }> = {
+  PT: {
+    period: 'Período',
+    channel: 'Canal',
+    professional: 'Profissional',
+    procedure: 'Procedimento',
+    status: 'Status',
+    unit: 'Unidade',
+    severity: 'Severidade',
+    all: 'todos',
+  },
+  EN: {
+    period: 'Period',
+    channel: 'Channel',
+    professional: 'Professional',
+    procedure: 'Procedure',
+    status: 'Status',
+    unit: 'Unit',
+    severity: 'Severity',
+    all: 'all',
+  },
+  ES: {
+    period: 'Período',
+    channel: 'Canal',
+    professional: 'Profesional',
+    procedure: 'Procedimiento',
+    status: 'Estado',
+    unit: 'Unidad',
+    severity: 'Severidad',
+    all: 'todos',
   },
 };
 
@@ -230,10 +350,59 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
   return <div className="toast-container"><div className="toast">{message}</div></div>;
 }
 
+const KpiExplainPanel = memo(({ meta, onClose }: { meta: KpiMeta; onClose: () => void }) => (
+  <div className="overlay-backdrop" onClick={onClose}>
+    <div className="overlay-panel kpi-explain-panel" onClick={e => e.stopPropagation()}>
+      <div className="overlay-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <CircleHelp size={18} />
+          <h3>{meta.label}</h3>
+        </div>
+        <button className="overlay-close" onClick={onClose}>×</button>
+      </div>
+      <div className="overlay-body">
+        <div className="kpi-explain-section">
+          <label>Como calcular</label>
+          <strong>{meta.formula}</strong>
+          <p>{meta.howToCalculate}</p>
+        </div>
+        <div className="kpi-explain-section">
+          <label>Fonte do dado</label>
+          <ul className="kpi-explain-list">
+            {meta.sources.map((source) => <li key={source}>{source}</li>)}
+          </ul>
+        </div>
+        <div className="kpi-explain-section">
+          <label>Campos usados</label>
+          <div className="kpi-explain-tags">
+            {meta.fields.map((field) => <span key={field}>{field}</span>)}
+          </div>
+        </div>
+        {meta.note ? (
+          <div className="kpi-explain-note">
+            {meta.note}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  </div>
+));
+
 function PlanDashboardApp() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const {
+    currency,
+    baseCurrency,
+    supportedCurrencies,
+    lastUpdatedAt,
+    rate,
+    stale: currencyStale,
+    warning: currencyWarning,
+    setCurrency,
+  } = useCurrency();
   const { language, setLanguage } = useLanguage();
+  const { t: translateText } = useTranslation();
   const userPlan = toDashboardPlan((user as any)?.plan);
   const [activePlan, setActivePlan] = useState<Plan>(userPlan);
   const [activeMenuItem, setActiveMenuItem] = useState(0);
@@ -246,8 +415,9 @@ function PlanDashboardApp() {
   const [showHelp, setShowHelp] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfExportMode, setPdfExportMode] = useState<"executive" | "investor" | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [selectedKpiMeta, setSelectedKpiMeta] = useState<KpiMeta | null>(null);
   const contentRef = useRef<HTMLElement>(null);
   const exportContentRef = useRef<HTMLDivElement>(null);
 
@@ -271,9 +441,25 @@ function PlanDashboardApp() {
   const profileEmail = (user as any)?.email || '';
   const profileRole = String((user as any)?.role || 'cliente').toUpperCase();
   const exportRole = useMemo(() => resolveExportRole(user), [user]);
-  const exportCapability = useMemo(
-    () => getExportCapability(activePlan, exportRole, activeMenuItem),
+  const exportPolicy = useMemo(
+    () => getDashboardExportPolicy(activePlan, exportRole, activeMenuItem),
     [activeMenuItem, activePlan, exportRole],
+  );
+  const pdfLoading = pdfExportMode !== null;
+  const apiFilters = useMemo(() => buildDashboardApiFilters(filters), [filters]);
+  const dashboardQuery = trpc.controlTower.getDashboardData.useQuery(apiFilters, {
+    refetchOnWindowFocus: false,
+    staleTime: 20_000,
+  });
+  const apiAppointments = useMemo(
+    () => controlTowerFactsToAppointments(dashboardQuery.data?.facts ?? []),
+    [dashboardQuery.data?.facts],
+  );
+  const resolvedAppointments = dashboardQuery.isSuccess && apiAppointments.length > 0 ? apiAppointments : undefined;
+  const kpiSourceMode: KpiSourceMode = dashboardQuery.isSuccess && apiAppointments.length > 0 ? 'integrated' : 'fallback';
+  const translatedKpiMeta = useMemo(
+    () => (selectedKpiMeta ? translateKpiMeta(selectedKpiMeta, language) : null),
+    [language, selectedKpiMeta],
   );
 
   useEffect(() => {
@@ -291,6 +477,28 @@ function PlanDashboardApp() {
     setMobileSidebarOpen(false);
   }, [activeMenuItem, activePlan]);
 
+  useEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+
+    const cards = root.querySelectorAll<HTMLElement>('.overview-card');
+    cards.forEach((card) => {
+      const label = card.querySelector('.overview-card-label')?.textContent?.trim();
+      if (!label) return;
+      card.dataset.kpiTitle = label;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', `${translateDashboardText(label, language)}: ${getExplainActionLabel(language)}`);
+      card.classList.add('kpi-explainer-target');
+    });
+  }, [activeMenuItem, activePlan, dashboardQuery.data, filters, language, refreshKey, resolvedAppointments]);
+
+  useEffect(() => {
+    translateRenderedDashboard(document.querySelector('.glx-plan-dashboard-root'), language);
+    translateRenderedDashboard(contentRef.current, language);
+    translateRenderedDashboard(exportContentRef.current, language);
+  }, [language, activeMenuItem, activePlan, dashboardQuery.data, resolvedAppointments, filters, pdfExportMode, selectedKpiMeta, showHelp, showNotifications, showSettings]);
+
   const handleSetLang = useCallback((next: Lang) => {
     setLang(next);
     setLanguage(toAppLanguage(next));
@@ -299,54 +507,45 @@ function PlanDashboardApp() {
   const handleRefresh = useCallback(() => {
     setRefreshKey(k => k + 1);
     setToastMsg(t.refreshMsg);
-  }, [exportCapability.allowCsv, exportCapability.reason, t]);
+  }, [t]);
 
   const handleExportCSV = useCallback(() => {
     try {
-      if (!exportCapability.allowCsv) {
-        throw new Error(exportCapability.reason || 'Exportacao CSV indisponivel para este perfil.');
+      if (!exportPolicy.csv.enabled) {
+        throw new Error(exportPolicy.csv.title || 'Exportacao CSV indisponivel para este perfil.');
       }
 
       const root = contentRef.current;
       if (!root) throw new Error('Container do dashboard não encontrado.');
-      const cards = root.querySelectorAll('.overview-card');
-      const tables = root.querySelectorAll('.data-table');
-      let csv = '\uFEFF';
-      const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
-
-      if (cards.length > 0) {
-        csv += '"KPI","Valor"\n';
-        cards.forEach(card => {
-          const label = card.querySelector('.overview-card-label')?.textContent?.trim() || '';
-          const value = card.querySelector('.overview-card-value')?.textContent?.trim() || '';
-          csv += `${escapeCsv(label)},${escapeCsv(value)}\n`;
-        });
-        csv += '\n';
+      const sections = extractDashboardSections(root);
+      if (sections.length === 0) {
+        throw new Error('Nenhuma seção do dashboard encontrada para exportar.');
       }
 
-      tables.forEach(table => {
-        const rows = table.querySelectorAll('tr');
-        rows.forEach(row => {
-          const cells = row.querySelectorAll('th, td');
-          const rowData: string[] = [];
-          cells.forEach(cell => rowData.push(escapeCsv(cell.textContent?.trim() || '')));
-          csv += rowData.join(',') + '\n';
-        });
-        csv += '\n';
+      const csv = buildDashboardCsv({
+        reportTitle: `${t[titleKey]} - ${translateDashboardText(menu.items[activeMenuItem] ?? 'Aba atual', language)}`,
+        planLabel: planLabel(activePlan),
+        currency,
+        generatedAt: new Date().toLocaleString(exportLocaleByLang[lang]),
+        filters: [
+          { label: exportFilterLabelsByLang[lang].period, value: filters.period },
+          { label: exportFilterLabelsByLang[lang].channel, value: filters.channel || exportFilterLabelsByLang[lang].all },
+          { label: exportFilterLabelsByLang[lang].professional, value: filters.professional || exportFilterLabelsByLang[lang].all },
+          { label: exportFilterLabelsByLang[lang].procedure, value: filters.procedure || exportFilterLabelsByLang[lang].all },
+          { label: exportFilterLabelsByLang[lang].status, value: filters.status || exportFilterLabelsByLang[lang].all },
+          { label: exportFilterLabelsByLang[lang].unit, value: filters.unit || exportFilterLabelsByLang[lang].all },
+          { label: exportFilterLabelsByLang[lang].severity, value: filters.severity || exportFilterLabelsByLang[lang].all },
+        ],
+        sections,
+        labels: csvLabelsByLang[lang],
       });
-
-      if (cards.length === 0 && tables.length === 0) {
-        throw new Error('Nenhum card ou tabela encontrado para exportar.');
-      }
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      // Using a simpler name format to avoid parsing issues in embedded browsers/webviews
       const ts = new Date().getTime();
-      a.setAttribute('download', `glx_report_${ts}.csv`);
-      a.target = '_blank';
+      a.setAttribute('download', `glx_${activePlan.toLowerCase()}_${lang.toLowerCase()}_${currency.toLowerCase()}_tab_${activeMenuItem}_${ts}.csv`);
       document.body.appendChild(a);
       a.click();
 
@@ -358,55 +557,101 @@ function PlanDashboardApp() {
       setToastMsg(t.csvMsg);
     } catch (err) {
       console.error('CSV export error:', err);
-      setToastMsg('Erro ao exportar CSV: ' + (err instanceof Error ? err.message : String(err)));
+      setToastMsg(`${translateText('Erro ao exportar CSV:')} ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [t]);
+  }, [activeMenuItem, activePlan, currency, exportPolicy.csv.enabled, exportPolicy.csv.title, filters, lang, language, menu.items, t, titleKey, translateText]);
 
   const handleLogout = useCallback(async () => {
     try {
       await logout({ redirectTo: '/login' });
     } catch (err) {
       console.error('Logout error:', err);
-      setToastMsg('Erro ao sair. Tente novamente.');
+      setToastMsg(translateText('Erro ao sair. Tente novamente.'));
     }
-  }, [logout]);
+  }, [logout, translateText]);
 
-  const handleExportPDF = useCallback(async () => {
+  const handleExportPDF = useCallback(async (mode: "executive" | "investor" = "executive") => {
     if (!contentRef.current || pdfLoading) return;
-    setPdfLoading(true);
-    setToastMsg(t.pdfGenerating);
-    // Allow React to render the hidden export container, then capture it
+    setPdfExportMode(mode);
+    setToastMsg(mode === "investor" ? translateText('Gerando PDF investidor...') : t.pdfGenerating);
+
     setTimeout(async () => {
       try {
-        if (!exportContentRef.current) throw new Error("Export ref missing");
-        await exportDashboardPDF(exportContentRef.current, t[titleKey], t[subtitleKey]);
-        setToastMsg(t.pdfMsg);
+        const exportNode =
+          mode === "investor"
+            ? contentRef.current
+            : exportContentRef.current;
+
+        if (!exportNode) throw new Error("Export ref missing");
+
+        const pdfTitle = mode === "investor" ? `${t[titleKey]} - ${translateText('Investor View')}` : t[titleKey];
+        const pdfSubtitle = mode === "investor"
+          ? translateText('LGPD-safe | Investor packet')
+          : t[subtitleKey];
+        const filePrefix = mode === "investor"
+          ? `glx_investor_${activePlan.toLowerCase()}_${lang.toLowerCase()}_${currency.toLowerCase()}`
+          : `glx_${activePlan.toLowerCase()}_${lang.toLowerCase()}_${currency.toLowerCase()}_executive`;
+
+        await exportDashboardPDF(
+          exportNode,
+          pdfTitle,
+          pdfSubtitle,
+          filePrefix,
+          pdfLabelsByLang[lang],
+          exportLocaleByLang[lang],
+        );
+        setToastMsg(mode === "investor" ? translateText('PDF investidor gerado com sucesso!') : t.pdfMsg);
       } catch (err) {
         console.error('PDF export error:', err);
-        setToastMsg('Erro na engine de PDF. Abrindo impressao...');
+        setToastMsg(translateText('Erro na engine de PDF. Abrindo impressao...'));
         setTimeout(() => window.print(), 500);
       } finally {
-        setPdfLoading(false);
+        setPdfExportMode(null);
       }
-    }, 500);
-  }, [exportCapability.allowPdf, exportCapability.reason, pdfLoading, t, titleKey, subtitleKey]);
+    }, mode === "investor" ? 150 : 500);
+  }, [activePlan, currency, lang, pdfLoading, t, titleKey, subtitleKey, translateText]);
+
+  const openKpiMeta = useCallback((label: string | null | undefined) => {
+    if (!label) return;
+    setSelectedKpiMeta(resolveKpiMeta(label, kpiSourceMode));
+  }, [kpiSourceMode]);
+
+  const handleKpiInteraction = useCallback((event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    const card = target.closest<HTMLElement>('[data-kpi-title], .overview-card');
+    if (!card) return;
+
+    if ('key' in event && event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    if ('key' in event) {
+      event.preventDefault();
+    }
+
+    const label = card.dataset.kpiTitle || card.getAttribute('data-kpi-title') || card.querySelector('.overview-card-label')?.textContent?.trim();
+    openKpiMeta(label);
+  }, [openKpiMeta]);
 
   if ((user as any)?.role === 'admin') {
     return <Redirect to="/admin" />;
   }
 
   return (
-    <div className="glx-plan-dashboard-root app-shell" data-theme={theme}>
+    <div className="glx-plan-dashboard-root app-shell" data-theme={theme} data-lang={language}>
       <div className="dashboard-ambient" aria-hidden="true">
         <span className="ambient-grid" />
         <span className="ambient-orb ambient-orb-a" />
         <span className="ambient-orb ambient-orb-b" />
         <span className="ambient-orb ambient-orb-c" />
       </div>
-      {mobileSidebarOpen && <button type="button" className="sidebar-backdrop" aria-label="Fechar menu" onClick={() => setMobileSidebarOpen(false)} />}
+      {mobileSidebarOpen && <button type="button" className="sidebar-backdrop" aria-label={translateText('Fechar menu')} onClick={() => setMobileSidebarOpen(false)} />}
       {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} removedNotifs={removedNotifs} onToggleRemove={handleToggleNotif} />}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} theme={theme} setTheme={setTheme} lang={lang} setLang={handleSetLang} />}
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
+      {translatedKpiMeta && <KpiExplainPanel meta={translatedKpiMeta} onClose={() => setSelectedKpiMeta(null)} />}
       {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg('')} />}
 
       <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
@@ -416,7 +661,7 @@ function PlanDashboardApp() {
         </div>
         <nav className="sidebar-nav">
           {menu.items.map((item, idx) => (
-            <div key={idx} className={`sidebar-item ${activeMenuItem === idx ? 'active' : ''}`} onClick={() => setActiveMenuItem(idx)}>{item}</div>
+            <div key={idx} className={`sidebar-item ${activeMenuItem === idx ? 'active' : ''}`} onClick={() => setActiveMenuItem(idx)}>{translateDashboardText(item, language)}</div>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -432,7 +677,7 @@ function PlanDashboardApp() {
             </select>
           </div>
           <div style={{ marginTop: 12 }}>
-            <div className="selector-row-label">TEMA</div>
+            <div className="selector-row-label">{translateText('Tema').toUpperCase()}</div>
             <div className="theme-toggle-wrapper" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ cursor: 'pointer' }}>
               <span className="theme-toggle-icon" aria-hidden="true">
                 {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
@@ -448,7 +693,7 @@ function PlanDashboardApp() {
               <button
                 className="selector-btn active"
                 type="button"
-                title="Abrir página de planos"
+                title={translateText('Abrir página de planos')}
                 onClick={() => setLocation('/planos')}
               >
                 {planLabel(activePlan)}
@@ -461,48 +706,100 @@ function PlanDashboardApp() {
       <div className="main-area">
         <header className="topbar">
           <div className="topbar-title-row">
-            <button type="button" className="mobile-menu-btn" aria-label="Abrir menu" onClick={() => setMobileSidebarOpen(true)}>
-              ☰
+            <button type="button" className="mobile-menu-btn" aria-label={translateText('Abrir menu')} onClick={() => setMobileSidebarOpen(true)}>
+              <Menu aria-hidden="true" />
             </button>
             <div className="topbar-title"><h1>{t[titleKey]}</h1><span>{t[subtitleKey]}</span></div>
           </div>
           <div className="topbar-actions">
             {activeFilterCount > 0 && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginRight: 4 }}>{activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}</span>}
+            <div className="currency-toolbar">
+              <label className="currency-toolbar-label" htmlFor="dashboard-currency-select">{translateText('Moeda')}</label>
+              <select
+                id="dashboard-currency-select"
+                className="filter-select currency-select"
+                value={currency}
+                onChange={(event) => void setCurrency(event.target.value as typeof currency)}
+              >
+                {supportedCurrencies.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <span className="currency-toolbar-meta">
+                {currency === baseCurrency || !rate
+                  ? `${baseCurrency} ${translateText('base')}`
+                  : `1 ${baseCurrency} = ${rate.toFixed(4)} ${currency}`}
+              </span>
+            </div>
             <button className="topbar-btn live status-btn">{t.dadosVivo}</button>
-            <button className="topbar-btn topbar-icon-btn notification-btn" onClick={() => setShowNotifications(true)} style={{ position: 'relative' }}>
-              🔔
+            <button className="topbar-btn topbar-icon-btn notification-btn" onClick={() => setShowNotifications(true)} style={{ position: 'relative' }} aria-label={translateText('Abrir notificações')}>
+              <Bell aria-hidden="true" />
               {activeNotifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeNotifCount}</span>}
             </button>
-            <button className="topbar-btn" onClick={() => setShowSettings(true)}>⚙</button>
+            <button className="topbar-btn topbar-icon-btn" onClick={() => setShowSettings(true)} aria-label={translateText('Abrir configurações')}>
+              <Settings aria-hidden="true" />
+            </button>
             <button className="topbar-btn text-btn" onClick={() => setShowHelp(true)}>{t.help}</button>
             <button className="topbar-btn text-btn" onClick={handleRefresh}>{t.atualizar}</button>
-            <button type="button" className="topbar-btn text-btn" onClick={handleExportCSV} disabled={!exportCapability.allowCsv} title={exportCapability.allowCsv ? t.exportCsv : exportCapability.reason}>
-              {t.exportCsv}
-            </button>
-            <button type="button" className="topbar-btn export-pdf" onClick={handleExportPDF} disabled={pdfLoading || !exportCapability.allowPdf} title={exportCapability.allowPdf ? t.exportPdf : exportCapability.reason}>
-              {pdfLoading ? '...' : t.exportPdf}
-            </button>
+            {exportPolicy.csv.visible && (
+              <button
+                type="button"
+                className="topbar-btn text-btn"
+                onClick={handleExportCSV}
+                disabled={!exportPolicy.csv.enabled}
+                title={exportPolicy.csv.title}
+              >
+                {exportPolicy.csv.label}
+              </button>
+            )}
+            {exportPolicy.pdf.visible && (
+              <button
+                type="button"
+                className="topbar-btn export-pdf"
+                onClick={() => handleExportPDF("executive")}
+                disabled={pdfLoading || !exportPolicy.pdf.enabled}
+                title={exportPolicy.pdf.title}
+              >
+                {pdfLoading && pdfExportMode === "executive" ? '...' : exportPolicy.pdf.label}
+              </button>
+            )}
+            {exportPolicy.investorPdf.visible && (
+              <button
+                type="button"
+                className="topbar-btn text-btn export-investor-pdf"
+                onClick={() => handleExportPDF("investor")}
+                disabled={pdfLoading || !exportPolicy.investorPdf.enabled}
+                title={exportPolicy.investorPdf.title}
+              >
+                {pdfLoading && pdfExportMode === "investor" ? '...' : exportPolicy.investorPdf.label}
+              </button>
+            )}
             <button className="topbar-btn text-btn" onClick={handleLogout}>{t.sair}</button>
           </div>
         </header>
-        <main className="content" ref={contentRef} key={refreshKey}>
-          {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} />}
-          {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} />}
-          {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} />}
-        </main>
-
-        {/* Hidden Container for Multi-Tab PDF Export */}
-        {pdfLoading && (
-          <div ref={exportContentRef} style={{ display: 'none' }}>
-            {menu.items.map((tabName, idx) => (
-              <div key={idx} className="pdf-export-section" data-title={tabName}>
-                {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} />}
-                {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} />}
-                {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} />}
-              </div>
-            ))}
+        {(currencyWarning || lastUpdatedAt) && (
+          <div className={`currency-banner ${currencyStale ? 'warning' : ''}`}>
+            <span>
+              {currencyWarning ?? `${translateText('Cotação de referência')}: ${new Date(lastUpdatedAt!).toLocaleString()}`}
+            </span>
           </div>
         )}
+        <main className="content" ref={contentRef} key={refreshKey} onClickCapture={handleKpiInteraction} onKeyDownCapture={handleKpiInteraction}>
+          {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+        </main>
+
+        {/* Hidden Container for Multi-Tab Export */}
+        <div ref={exportContentRef} style={{ position: 'absolute', left: '-99999px', top: 0, width: 1440, visibility: 'hidden', pointerEvents: 'none' }}>
+          {menu.items.map((tabName, idx) => (
+            <div key={idx} className="pdf-export-section" data-title={translateDashboardText(tabName, language)}>
+              {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
+              {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
+              {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

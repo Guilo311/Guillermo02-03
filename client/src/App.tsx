@@ -25,6 +25,7 @@ const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const AdminSistema = lazy(() => import("./pages/admin/AdminSistema"));
 const AdminKommo = lazy(() => import("./pages/admin/AdminKommo"));
+const AdminAsaas = lazy(() => import("./pages/admin/AdminAsaas"));
 const AdminErros = lazy(() => import("./pages/admin/AdminErros"));
 const AdminFeatureFlags = lazy(() => import("./pages/admin/AdminFeatureFlags"));
 
@@ -93,6 +94,7 @@ function Router() {
           <Route path="/admin/usuarios"><AdminRoute><AdminUsuarios /></AdminRoute></Route>
           <Route path="/admin/sistema"><AdminRoute><AdminSistema /></AdminRoute></Route>
           <Route path="/admin/kommo"><AdminRoute><AdminKommo /></AdminRoute></Route>
+          <Route path="/admin/asaas"><AdminRoute><AdminAsaas /></AdminRoute></Route>
           <Route path="/admin/erros"><AdminRoute><AdminErros /></AdminRoute></Route>
           <Route path="/admin/flags"><AdminRoute><AdminFeatureFlags /></AdminRoute></Route>
 

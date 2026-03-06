@@ -32,6 +32,7 @@ import {
   updateDataImportStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
+import { syncLocalAiPayloadToClient } from "./domain/localAiDashboardSync";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -39,6 +40,55 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Acesso negado. Apenas administradores.' });
   }
   return next({ ctx });
+});
+
+const localAiRecordSchema = z.object({
+  id: z.string().optional(),
+  timestamp: z.string().optional(),
+  channel: z.string().optional(),
+  professional: z.string().optional(),
+  procedure: z.string().optional(),
+  status: z.string().optional(),
+  pipeline: z.string().optional(),
+  unit: z.string().optional(),
+  sourceType: z.enum(["upload", "crm", "api", "webhook", "manual"]).optional(),
+  leadId: z.string().optional(),
+  patientId: z.string().optional(),
+  firstContactAt: z.string().optional(),
+  confirmedAt: z.string().optional(),
+  consultationStartedAt: z.string().optional(),
+  arrivalAt: z.string().optional(),
+  firstResponseAt: z.string().optional(),
+  dueAt: z.string().optional(),
+  paidAt: z.string().optional(),
+  revenueGross: z.number().optional(),
+  revenueNet: z.number().optional(),
+  discounts: z.number().optional(),
+  glosas: z.number().optional(),
+  taxes: z.number().optional(),
+  directCost: z.number().optional(),
+  variableCost: z.number().optional(),
+  fixedCost: z.number().optional(),
+  marketingSpend: z.number().optional(),
+  repasse: z.number().optional(),
+  ticketMedio: z.number().optional(),
+  slotsAvailable: z.number().optional(),
+  slotsEmpty: z.number().optional(),
+  durationMinutes: z.number().optional(),
+  waitMinutes: z.number().optional(),
+  npsScore: z.number().optional(),
+  cancellationReason: z.string().optional(),
+  confirmedAttendance: z.boolean().optional(),
+  recurringPatient: z.boolean().optional(),
+  isNewPatient: z.boolean().optional(),
+  checklistCompleted: z.number().optional(),
+  checklistTotal: z.number().optional(),
+  headcount: z.number().optional(),
+  certifications: z.number().optional(),
+  trainingHours: z.number().optional(),
+  materialList: z.array(z.string()).optional(),
+  baseOldRevenueCurrent: z.number().optional(),
+  baseOldRevenuePrevious: z.number().optional(),
 });
 
 export const dashboardDataRouter = router({
@@ -525,6 +575,66 @@ export const dashboardDataRouter = router({
     .mutation(async ({ input }) => {
       await updateDataImportStatus(input.id, input.status, input.recordsImported, input.errorMessage);
       return { success: true };
+    }),
+
+  ingestWithLocalAi: adminProcedure
+    .input(z.object({
+      clientId: z.number(),
+      fileName: z.string().optional(),
+      source: z.enum(["api", "webhook", "manual", "crm", "csv", "xlsx", "pdf"]).default("api"),
+      propagateToPlanDashboards: z.boolean().default(true),
+      records: z.array(localAiRecordSchema).min(1).max(5000),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const importId = await createDataImport({
+        clientId: input.clientId,
+        userId: ctx.user!.id,
+        fileName: input.fileName || `local-ai-${Date.now()}.json`,
+        fileType:
+          input.source === "csv" ? "csv" :
+          input.source === "xlsx" ? "excel" :
+          input.source === "manual" ? "manual" :
+          "ai",
+        metadata: {
+          source: input.source,
+          recordsCount: input.records.length,
+          propagateToPlanDashboards: input.propagateToPlanDashboards,
+        },
+      });
+
+      await updateDataImportStatus(importId, "processing");
+
+      try {
+        const synced = await syncLocalAiPayloadToClient({
+          clientId: input.clientId,
+          records: input.records,
+          fileName: input.fileName || `local-ai-${Date.now()}.json`,
+          fileType: input.source,
+          metadata: {
+            importedByAdminId: ctx.user!.id,
+          },
+          propagateToPlanDashboards: input.propagateToPlanDashboards,
+        });
+
+        await updateDataImportStatus(importId, "completed", synced.result.facts.length);
+
+        return {
+          success: true,
+          importId,
+          warnings: synced.result.warnings,
+          coverage: synced.result.coverage,
+          routing: synced.result.routing,
+          propagatedUserIds: synced.propagatedUserIds,
+          factsImported: synced.result.facts.length,
+          adminPreview: synced.result.adminData,
+        };
+      } catch (error: any) {
+        await updateDataImportStatus(importId, "failed", undefined, error?.message || "Local AI sync failed");
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Erro ao sincronizar com IA local: " + (error?.message || "Erro desconhecido"),
+        });
+      }
     }),
 
   // ==================== AI PROCESSING ====================

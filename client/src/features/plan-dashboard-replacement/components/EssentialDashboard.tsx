@@ -1,11 +1,12 @@
 import { useMemo, useCallback, memo } from 'react';
 import ReactApexChart from 'react-apexcharts';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { getChartTheme } from '../utils/chartOptions';
 import FilterBar from './FilterBar';
 import { useTranslation } from '../i18n';
 import {
-  Filters, getAllAppointments, applyFilters, computeKPIs,
-  computeByProfessional, computeByChannel, computeWeeklyTrend,
+  type Appointment, Filters, getAllAppointments, applyFilters, computeKPIs,
+  computeByProfessional, computeByChannel, computeWeeklyTrend, getFilterOptions,
 } from '../data/mockData';
 
 interface Props {
@@ -14,12 +15,7 @@ interface Props {
   theme: 'dark' | 'light';
   filters: Filters;
   onFiltersChange: (f: Filters) => void;
-}
-
-function fmt(n: number): string {
-  if (n >= 1000000) return `R$ ${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `R$ ${(n / 1000).toFixed(1)}k`;
-  return `R$ ${n.toFixed(0)}`;
+  appointments?: Appointment[];
 }
 
 type Priority = 'P1' | 'P2' | 'P3' | 'OK';
@@ -46,10 +42,13 @@ function badgeForPriority(priority: Priority) {
   return { label: 'OK', className: 'green' };
 }
 
-function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT" }: Props) {
+function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT", appointments }: Props) {
   const { t } = useTranslation();
+  const { formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
+  const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
   const ct = useMemo(() => getChartTheme(theme), [theme]);
-  const allData = useMemo(() => getAllAppointments(), []);
+  const allData = useMemo(() => appointments ?? getAllAppointments(), [appointments]);
+  const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
   const kpis = useMemo(() => computeKPIs(filtered), [filtered]);
   const byProf = useMemo(() => computeByProfessional(filtered), [filtered]);
@@ -202,7 +201,7 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
       { id:'01', kpi:'Faturamento Bruto Mensal', value: fmt(current.gross), meta: fmt(grossMeta), baseN:String(current.receiptsCount), priority:d20Priority, action:'D20 Rule: projetar risco se <80% no dia 20' },
       { id:'02', kpi:'Receita Líquida', value: `${current.netPctGross.toFixed(1)}% do bruto`, meta:'> 92% do bruto', baseN:fmt(current.gross), priority:netPriority, action:'Monitorar glosas, estornos e inadimplência' },
       { id:'03', kpi:'Margem Líquida (%)', value: `${current.marginPct.toFixed(1)}%`, meta:'> 18%', baseN:fmt(current.net), priority:marginPriority, action:'Comparar benchmark da especialidade' },
-      { id:'04', kpi:'Ticket Médio (R$)', value: fmt(current.ticketAvg), meta: fmt(current.ticketBenchmark), baseN:String(current.consultations), priority:ticketPriority, action:'Segmentar por procedimento' },
+      { id:'04', kpi:moneyTitle('Ticket Médio'), value: fmt(current.ticketAvg), meta: fmt(current.ticketBenchmark), baseN:String(current.consultations), priority:ticketPriority, action:'Segmentar por procedimento' },
       { id:'05', kpi:'Inadimplência (%)', value: `${current.delinquencyPct.toFixed(1)}%`, meta:'< 5%', baseN:fmt(current.gross), priority:inadPriority, action:'Cobrança ativa e política de recebíveis' },
       { id:'06', kpi:'Despesas Fixas / Receita (%)', value: `${current.fixedPct.toFixed(1)}%`, meta:'< 50%', baseN:fmt(current.net), priority:fixedPriority, action:'Revisar estrutura fixa e contratos' },
     ];
@@ -281,7 +280,7 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
       { id:'01', kpi:'Leads Gerados / Semana', value:String(current.leads), meta:String(current.leadMeta), baseN:String(current.leads), priority:leadsPriority, action:'Comparar semana anterior e alertar tendência' },
       { id:'02', kpi:'Conversão Lead → Agendamento (%)', value:`${current.conversion.toFixed(1)}%`, meta:'> 30%', baseN:String(current.leads), priority:conversionPriority, action:'Separar funil por canal (script quebrando)' },
       { id:'03', kpi:'No-Show por Canal de Origem (%)', value:`${(worstNoShowChannel.noShowRateChannel ?? 0).toFixed(1)}% (${(worstNoShowChannel as any).name ?? '-'})`, meta:'< média geral', baseN:String((worstNoShowChannel as any).total ?? 0), priority:noShowPriority, action:'Atacar canal com no-show acima da média' },
-      { id:'04', kpi:'CPL (R$)', value:fmt(current.cpl), meta:fmt(140), baseN:String(current.leads), priority:cplPriority, action:'Integrar Meta/Google Ads e revisar criativos' },
+      { id:'04', kpi:moneyTitle('CPL'), value:fmt(current.cpl), meta:fmt(140), baseN:String(current.leads), priority:cplPriority, action:'Integrar Meta/Google Ads e revisar criativos' },
       { id:'05', kpi:'ROI por Canal (%)', value:`${(roiWorst.roi ?? 0).toFixed(0)}% (${(roiWorst as any).name ?? '-'})`, meta:'> 200%', baseN:fmt((roiWorst as any).attributedRevenue ?? 0), priority:roiPriority, action:'Suspender canal com ROI negativo' },
     ];
   }, [marketingCurrent, marketingPrev, marketingByChannel]);
@@ -341,14 +340,14 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
 
   return (
     <div className="animate-fade-in" key={activeTab}>
-      <FilterBar filters={filters} onChange={onFiltersChange} />
+      <FilterBar filters={filters} onChange={onFiltersChange} options={filterOptions} />
 
       {/* ===== VISÃO CEO ===== */}
       {activeTab === 0 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> {t('Visão CEO — Resumo')}</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">{t('Faturamento Bruto')}</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('Período')}</span></div></div>
-          <div className="overview-card"><div className="overview-card-label">{t('Receita Líquida')}</div><div className="overview-card-value">{fmt(kpis.netRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('92% do bruto')}</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle(t('Faturamento Bruto'))}</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('Período')}</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle(t('Receita Líquida'))}</div><div className="overview-card-value">{fmt(kpis.netRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('92% do bruto')}</span></div></div>
           <div className="overview-card"><div className="overview-card-label">{t('Ocupação')}</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">{t('No-Show')}</div><div className="overview-card-value" style={{color: kpis.noShowRate > 10 ? 'var(--yellow)' : 'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div></div>
         </div>
@@ -470,10 +469,10 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
       {activeTab === 2 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Financeiro Executivo</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">Faturamento Bruto</div><div className="overview-card-value">{fmt(financeCurrent?.gross ?? 0)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Receita Líquida</div><div className="overview-card-value">{fmt(financeCurrent?.net ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Faturamento Bruto')}</div><div className="overview-card-value">{fmt(financeCurrent?.gross ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Líquida')}</div><div className="overview-card-value">{fmt(financeCurrent?.net ?? 0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Margem Líquida</div><div className="overview-card-value" style={{color:(financeCurrent?.marginPct ?? 0) >= 18 ? 'var(--green)' : 'var(--yellow)'}}>{(financeCurrent?.marginPct ?? 0).toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">Ticket Médio</div><div className="overview-card-value">{fmt(financeCurrent?.ticketAvg ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Ticket Médio')}</div><div className="overview-card-value">{fmt(financeCurrent?.ticketAvg ?? 0)}</div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 Faturamento Bruto Mensal (R$)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Coluna + meta proporcional (D20)</span></div><div className="chart-card-body">
@@ -506,7 +505,7 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Tabela Financeira (P1/P2/P3)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Ações por regra de negócio</span></div><div className="chart-card-body" style={{padding:12}}>
             <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Ação</th></tr></thead><tbody>
               {financeRules.map((row) => { const badge = badgeForPriority(row.priority); return <tr key={row.id}><td>{row.id}</td><td>{row.kpi}</td><td style={{fontWeight:700}}>{row.value}</td><td>{row.meta}</td><td>{row.baseN}</td><td><span className={`chart-card-badge ${badge.className}`} style={{display:'inline-block'}}>{badge.label}</span></td><td>{row.action}</td></tr>; })}
-              <tr><td>07</td><td>Posição de Caixa (15d)</td><td style={{fontWeight:700}}>{fmt(cashProjection.projected[cashProjection.projected.length-1]?.cash ?? 0)}</td><td>Sempre positivo</td><td>Fluxo previsto</td><td><span className={`chart-card-badge ${badgeForPriority((cashProjection.projected.some(p=>p.cash<0)?'P1':'OK')).className}`} style={{display:'inline-block'}}>{badgeForPriority((cashProjection.projected.some(p=>p.cash<0)?'P1':'OK')).label}</span></td><td>Reforçar caixa se projeção negativa em qualquer semana</td></tr>
+              <tr><td>07</td><td>{moneyTitle('Posição de Caixa')} (15d)</td><td style={{fontWeight:700}}>{fmt(cashProjection.projected[cashProjection.projected.length-1]?.cash ?? 0)}</td><td>Sempre positivo</td><td>Fluxo previsto</td><td><span className={`chart-card-badge ${badgeForPriority((cashProjection.projected.some(p=>p.cash<0)?'P1':'OK')).className}`} style={{display:'inline-block'}}>{badgeForPriority((cashProjection.projected.some(p=>p.cash<0)?'P1':'OK')).label}</span></td><td>Reforçar caixa se projeção negativa em qualquer semana</td></tr>
             </tbody></table>
           </div></div>
         </div>
@@ -517,7 +516,7 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Leads / Semana</div><div className="overview-card-value">{marketingCurrent?.leads ?? 0}</div></div>
           <div className="overview-card"><div className="overview-card-label">Conversão Lead → Agendamento</div><div className="overview-card-value">{(marketingCurrent?.conversion ?? 0).toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">CPL</div><div className="overview-card-value">{fmt(marketingCurrent?.cpl ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('CPL')}</div><div className="overview-card-value">{fmt(marketingCurrent?.cpl ?? 0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">ROI Médio por Canal</div><div className="overview-card-value" style={{color:(marketingByChannel.reduce((s,c)=>s+c.roi,0)/Math.max(marketingByChannel.length,1)) > 200 ? 'var(--green)' : 'var(--yellow)'}}>{(marketingByChannel.reduce((s,c)=>s+c.roi,0)/Math.max(marketingByChannel.length,1)).toFixed(0)}%</div></div>
         </div>
         <div className="chart-grid">
