@@ -12,6 +12,7 @@ export class BrowserPool {
   private readonly pool: PooledBrowser[] = [];
   private readonly maxPoolSize = 3;
   private readonly browserTtlMs = 10 * 60 * 1000;
+  private warmupPromise: Promise<void> | null = null;
 
   async acquire(): Promise<Browser> {
     const idle = this.pool.find((entry) => !entry.inUse && this.isAlive(entry));
@@ -27,6 +28,22 @@ export class BrowserPool {
     }
 
     return this.waitForRelease();
+  }
+
+  async warmup() {
+    if (this.pool.length > 0) return;
+    if (this.warmupPromise) return this.warmupPromise;
+
+    this.warmupPromise = (async () => {
+      try {
+        const browser = await this.launch();
+        this.pool.push({ browser, inUse: false, createdAt: Date.now() });
+      } finally {
+        this.warmupPromise = null;
+      }
+    })();
+
+    return this.warmupPromise;
   }
 
   release(browser: Browser) {

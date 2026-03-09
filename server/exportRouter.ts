@@ -9,7 +9,16 @@ exportRouter.get("/health", (_req, res) => {
 
 exportRouter.post("/pdf", async (req, res) => {
   try {
-    const payload = req.body as ExportPayload;
+    const startedAt = Date.now();
+    const body = req.body as Partial<ExportPayload>;
+    const payload: ExportPayload = {
+      clinicName: body.clinicName ?? "",
+      plan: (body.plan as ExportPayload["plan"]) ?? "essential",
+      language: body.language ?? "PT",
+      currency: body.currency ?? "BRL",
+      filters: body.filters ?? {},
+      appointments: body.appointments,
+    };
     if (!payload?.plan || !payload?.clinicName) {
       res.status(400).json({ error: "plan e clinicName sao obrigatorios" });
       return;
@@ -21,6 +30,7 @@ exportRouter.post("/pdf", async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Length", String(buffer.length));
+    res.setHeader("X-Export-Duration-Ms", String(Date.now() - startedAt));
     res.send(buffer);
   } catch (error) {
     console.error("[/api/export/pdf]", error);
