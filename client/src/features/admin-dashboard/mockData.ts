@@ -568,7 +568,7 @@ const pipelineModules: DashboardModule[] = [
 const views: DashboardViewDefinition[] = [
   {
     id: "pipeline",
-    title: "Visão 2 — Pipeline & Funil",
+    title: "Pipeline & Funil",
     executiveQuestion: "O crescimento dos próximos 30 a 60 dias está garantido?",
     cadence: "Revisão semanal de 30 minutos, com leitura diária quando necessário.",
     description: "Painel do para-brisa comercial da GLX: mostra entrada de leads, calls, fechamento e a garantia de receita futura para OS e Advisory.",
@@ -584,7 +584,7 @@ const views: DashboardViewDefinition[] = [
   },
   {
     id: "operacao",
-    title: "Visão 1 — Operação Interna",
+    title: "Operação Interna",
     executiveQuestion: "A empresa está saudável agora e protegendo o dinheiro que ganhou?",
     cadence: "Revisão semanal nos críticos e fechamento mensal no scorecard completo.",
     description: "Painel do retrovisor e da execução atual: receita, retenção, financeiro e capacidade de entrega com leitura executiva e score de saúde.",
@@ -610,6 +610,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "API REST nativa + webhook em mudança de etapa do funil",
       cadence: "Tempo real",
       scope: ["pipeline", "operacao"],
+      connectorApp: "googleCalendar",
+      connectorLabel: "Google Calendar",
+      endpoint: "/workspace/google-calendar/sync",
     },
     {
       id: "asaas",
@@ -618,6 +621,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "REST API com pull diário automatizado via Make",
       cadence: "Diária",
       scope: ["operacao"],
+      connectorApp: "googleForms",
+      connectorLabel: "Google Forms",
+      endpoint: "/workspace/google-forms/webhook",
     },
     {
       id: "google-calendar",
@@ -626,6 +632,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "Google Calendar API com contagem por labels como CALL-QUAL, CALL-FECH e DIAG-OS",
       cadence: "Diária",
       scope: ["pipeline"],
+      connectorApp: "contractsSheet",
+      connectorLabel: "Planilha de Contratos",
+      endpoint: "/workspace/google-sheets/contracts/sync",
     },
     {
       id: "google-forms",
@@ -634,6 +643,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "Google Forms conectado ao Sheets com pull semanal via Make",
       cadence: "Semanal",
       scope: ["operacao"],
+      connectorApp: "dreSheet",
+      connectorLabel: "Planilha DRE",
+      endpoint: "/workspace/google-sheets/dre/sync",
     },
     {
       id: "contratos",
@@ -642,6 +654,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "Google Sheets API com atualização manual semanal pelo CEO e leitura automática",
       cadence: "Semanal",
       scope: ["pipeline", "operacao"],
+      connectorApp: "kommo",
+      connectorLabel: "Kommo",
+      endpoint: "/crm/kommo/webhook",
     },
     {
       id: "dre",
@@ -650,6 +665,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "Google Sheets API com atualização manual mensal",
       cadence: "Mensal",
       scope: ["operacao"],
+      connectorApp: "asaas",
+      connectorLabel: "Asaas",
+      endpoint: "/billing/asaas/webhook",
     },
     {
       id: "tempo",
@@ -658,6 +676,9 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       integrationMethod: "Exportação manual mensal ou integração futura via Notion API",
       cadence: "Mensal",
       scope: ["operacao"],
+      connectorApp: "asaas",
+      connectorLabel: "Asaas",
+      endpoint: "/billing/asaas/webhook",
     },
   ],
   alertRules: [
@@ -685,14 +706,14 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
       phase: 1,
       title: "Pipeline & Funil",
       timeline: "Semana 1-2",
-      scope: "Visão 2 completa com blocos 1-5, integrações Pipedrive + Google Calendar + Planilha de Contratos.",
+      scope: "Pipeline completo com blocos 1-5, integrações Pipedrive + Google Calendar + Planilha de Contratos.",
       justification: "O briefing prioriza pipeline primeiro para garantir crescimento futuro antes de otimizar operação.",
     },
     {
       phase: 2,
       title: "Operação — Receita, Clientes e Financeiro",
       timeline: "Semana 3-4",
-      scope: "Visão 1 módulos 1-3 com ASAAS, Google Forms, Contratos e DRE.",
+      scope: "Operação interna módulos 1-3 com ASAAS, Google Forms, Contratos e DRE.",
       justification: "Depois de garantir topo e meio do funil, a operação precisa proteger MRR, margem e retenção.",
     },
     {
@@ -713,6 +734,6 @@ export const ADMIN_DASHBOARD_MOCK_DATA: DashboardBriefingData = {
   assumptions: [
     "As probabilidades do pipeline ponderado seguem o briefing: Lead Quente 10%, Call Qualificação 30%, Call Fechamento 60%, Proposta enviada 80%.",
     "Os conectores externos estão preparados como estrutura de integração futura; nesta etapa o dashboard usa dados mockados consistentes com o briefing.",
-    "A página 9 do PDF veio sem conteúdo textual extraível, mas os 21 KPIs da Visão 2 foram recompostos integralmente pela contagem e continuidade entre as páginas 8, 10 e 11.",
+    "A página 9 do PDF veio sem conteúdo textual extraível, mas os 21 KPIs do pipeline foram recompostos integralmente pela contagem e continuidade entre as páginas 8, 10 e 11.",
   ],
 };

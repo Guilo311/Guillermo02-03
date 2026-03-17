@@ -65,6 +65,17 @@ export function AdminSidebarStack({
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-6 text-[#667085]">{decodeDashboardText(integration.integrationMethod)}</p>
+                <div className="mt-3 grid gap-2">
+                  <div className="rounded-[18px] border border-[#e7edf6] bg-white px-3 py-2 text-[11px] leading-5 text-[#526070]">
+                    <strong className="text-[#0f172a]">App no menu:</strong> {decodeDashboardText(integration.connectorLabel)}
+                  </div>
+                  <div className="rounded-[18px] border border-[#e7edf6] bg-white px-3 py-2 text-[11px] leading-5 text-[#526070]">
+                    <strong className="text-[#0f172a]">Endpoint:</strong> {integration.endpoint}
+                  </div>
+                  <div className="rounded-[18px] border border-[#e7edf6] bg-white px-3 py-2 text-[11px] leading-5 text-[#526070]">
+                    <strong className="text-[#0f172a]">Dados que alimenta:</strong> {decodeDashboardText(integration.provides.join(", "))}
+                  </div>
+                </div>
               </div>
             ))}
         </div>

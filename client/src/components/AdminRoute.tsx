@@ -13,7 +13,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(255,201,153,0.2),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(191,235,255,0.22),_transparent_24%),linear-gradient(180deg,_#fcfdff_0%,_#f5f7fb_100%)]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
           <p className="text-gray-400">Verificando permissões...</p>

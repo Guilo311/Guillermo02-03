@@ -26,7 +26,7 @@ export function DataFreshnessInfo({
             <Database className="h-4.5 w-4.5" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7d8ea4]">Fontes da Visao 2</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7d8ea4]">Fontes do pipeline</div>
             <p className="mt-1 text-sm leading-6 text-[#526070]">{sources.map((source) => decodeDashboardText(source)).join(" • ")}</p>
           </div>
         </div>

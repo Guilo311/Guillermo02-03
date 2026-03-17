@@ -27,6 +27,10 @@ const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const AdminSistema = lazy(() => import("./pages/admin/AdminSistema"));
 const AdminKommo = lazy(() => import("./pages/admin/AdminKommo"));
 const AdminAsaas = lazy(() => import("./pages/admin/AdminAsaas"));
+const AdminGoogleCalendar = lazy(() => import("./pages/admin/AdminGoogleCalendar"));
+const AdminGoogleForms = lazy(() => import("./pages/admin/AdminGoogleForms"));
+const AdminContratosSheets = lazy(() => import("./pages/admin/AdminContratosSheets"));
+const AdminDreSheets = lazy(() => import("./pages/admin/AdminDreSheets"));
 const AdminErros = lazy(() => import("./pages/admin/AdminErros"));
 const AdminFeatureFlags = lazy(() => import("./pages/admin/AdminFeatureFlags"));
 
@@ -61,12 +65,19 @@ function RouteFallback() {
   );
 }
 
+function AdminRouteFallback() {
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,201,153,0.2),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(191,235,255,0.22),_transparent_24%),linear-gradient(180deg,_#fcfdff_0%,_#f5f7fb_100%)]" />
+  );
+}
+
 function Router() {
   const [location] = useLocation();
+  const suspenseFallback = location.startsWith("/admin") ? <AdminRouteFallback /> : <RouteFallback />;
 
   return (
     <MotionRouteTransition routeKey={location}>
-      <Suspense fallback={<RouteFallback />}>
+      <Suspense fallback={suspenseFallback}>
         <Switch location={location}>
           <Route path="/"><Home /></Route>
           <Route path="/obrigado"><ThankYou /></Route>
@@ -97,6 +108,10 @@ function Router() {
           <Route path="/admin/sistema"><AdminRoute><AdminSistema /></AdminRoute></Route>
           <Route path="/admin/kommo"><AdminRoute><AdminKommo /></AdminRoute></Route>
           <Route path="/admin/asaas"><AdminRoute><AdminAsaas /></AdminRoute></Route>
+          <Route path="/admin/google-calendar"><AdminRoute><AdminGoogleCalendar /></AdminRoute></Route>
+          <Route path="/admin/google-forms"><AdminRoute><AdminGoogleForms /></AdminRoute></Route>
+          <Route path="/admin/planilha-contratos"><AdminRoute><AdminContratosSheets /></AdminRoute></Route>
+          <Route path="/admin/planilha-dre"><AdminRoute><AdminDreSheets /></AdminRoute></Route>
           <Route path="/admin/erros"><AdminRoute><AdminErros /></AdminRoute></Route>
           <Route path="/admin/flags"><AdminRoute><AdminFeatureFlags /></AdminRoute></Route>
 

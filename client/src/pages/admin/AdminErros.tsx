@@ -1,26 +1,16 @@
-import AdminLayout from "@/components/AdminLayout";
+import AdminLayout, { useAdminTheme } from "@/components/AdminLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getAdminErrorsUiCopy } from "@/lib/adminUiLocale";
 import {
   AlertTriangle,
   AlertCircle,
   XCircle,
-  Terminal,
-  RefreshCw,
-  Download,
-  Filter,
   Bell,
   BellOff,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState, useEffect, useRef } from "react";
 import { Line } from "react-chartjs-2";
 import { MotionPageShell } from "@/animation/components/MotionPageShell";
 import {
@@ -84,21 +74,10 @@ const chartOptions = {
 };
 
 const alerts = [
-  { id: 1, type: "critical", module: "API", message: "Taxa de erro 5xx acima de 10% no módulo de pagamentos", time: "5 min atrás", active: true },
-  { id: 2, type: "warning", module: "Database", message: "Latência do banco de dados acima de 100ms", time: "15 min atrás", active: true },
-  { id: 3, type: "warning", module: "Workers", message: "Fila de processamento com 500+ itens pendentes", time: "30 min atrás", active: false },
-  { id: 4, type: "info", module: "CDN", message: "Cache invalidado para /api/v2/*", time: "1h atrás", active: false },
-];
-
-const initialLogs = [
-  { timestamp: "16:37:28", level: "ERROR", module: "payment", message: "Failed to process payment for user_id=12345: Card declined" },
-  { timestamp: "16:37:25", level: "WARN", module: "auth", message: "Multiple failed login attempts for email=test@example.com" },
-  { timestamp: "16:37:22", level: "INFO", module: "api", message: "Request completed: POST /api/v2/appointments (200) - 145ms" },
-  { timestamp: "16:37:18", level: "ERROR", module: "database", message: "Connection timeout after 30000ms - retrying..." },
-  { timestamp: "16:37:15", level: "INFO", module: "worker", message: "Job completed: send_email_batch (processed: 250, failed: 2)" },
-  { timestamp: "16:37:12", level: "DEBUG", module: "cache", message: "Cache miss for key: user_preferences_12345" },
-  { timestamp: "16:37:08", level: "WARN", module: "api", message: "Rate limit approaching for client_id=abc123 (80/100 requests)" },
-  { timestamp: "16:37:05", level: "INFO", module: "system", message: "Health check passed - all services operational" },
+  { id: 1, type: "critical", module: "API", message: "Taxa de erro 5xx acima de 10% no modulo de pagamentos", time: "5 min atras", active: true },
+  { id: 2, type: "warning", module: "Database", message: "Latencia do banco de dados acima de 100ms", time: "15 min atras", active: true },
+  { id: 3, type: "warning", module: "Workers", message: "Fila de processamento com 500+ itens pendentes", time: "30 min atras", active: false },
+  { id: 4, type: "info", module: "CDN", message: "Cache invalidado para /api/v2/*", time: "1h atras", active: false },
 ];
 
 function StatCard({
@@ -132,53 +111,16 @@ function StatCard({
 }
 
 export default function AdminErros() {
-  const [periodo, setPeriodo] = useState("24h");
-  const [logFilter, setLogFilter] = useState("all");
-  const [logs, setLogs] = useState(initialLogs);
-  const [isLive, setIsLive] = useState(true);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const { theme } = useAdminTheme();
+  const { language } = useLanguage();
+  const copy = getAdminErrorsUiCopy(language);
 
-  useEffect(() => {
-    if (!isLive) return;
-
-    const newLogMessages = [
-      { level: "INFO", module: "api", message: "Request completed: GET /api/v2/users (200) - 45ms" },
-      { level: "WARN", module: "auth", message: "Token refresh required for session_id=xyz789" },
-      { level: "ERROR", module: "payment", message: "Webhook delivery failed: timeout after 5000ms" },
-      { level: "DEBUG", module: "cache", message: "Cache hit for key: clinic_settings_456" },
-      { level: "INFO", module: "worker", message: "Starting job: generate_monthly_report" },
-    ];
-
-    const interval = setInterval(() => {
-      const randomLog = newLogMessages[Math.floor(Math.random() * newLogMessages.length)];
-      const now = new Date();
-      const timestamp = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-
-      setLogs((prev) => [{ timestamp, ...randomLog }, ...prev.slice(0, 49)]);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [isLive]);
-
-  const filteredLogs = logs.filter((log) => {
-    if (logFilter === "all") return true;
-    return log.level.toLowerCase() === logFilter;
-  });
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "ERROR":
-        return "text-red-500";
-      case "WARN":
-        return "text-yellow-500";
-      case "INFO":
-        return "text-blue-500";
-      case "DEBUG":
-        return "text-gray-500";
-      default:
-        return "text-white";
-    }
-  };
+  const alerts = [
+    { id: 1, type: "critical", module: copy.alertModules.api, message: copy.alertMessages.payments5xx, time: language === "en" ? "5 min ago" : language === "es" ? "hace 5 min" : "5 min atras", active: true },
+    { id: 2, type: "warning", module: copy.alertModules.database, message: copy.alertMessages.dbLatency, time: language === "en" ? "15 min ago" : language === "es" ? "hace 15 min" : "15 min atras", active: true },
+    { id: 3, type: "warning", module: copy.alertModules.workers, message: copy.alertMessages.workersQueue, time: language === "en" ? "30 min ago" : language === "es" ? "hace 30 min" : "30 min atras", active: false },
+    { id: 4, type: "info", module: copy.alertModules.cdn, message: copy.alertMessages.cdnCache, time: language === "en" ? "1h ago" : language === "es" ? "hace 1h" : "1h atras", active: false },
+  ];
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -198,62 +140,47 @@ export default function AdminErros() {
       <MotionPageShell className="space-y-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <h1 className="text-[1.9rem] font-semibold tracking-[-0.04em] text-[#0f172a]">Identificação de Erros</h1>
-            <p className="text-muted-foreground">Observabilidade e monitoramento em tempo real</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:justify-end">
-            <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-full sm:w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">1 hora</SelectItem>
-                <SelectItem value="6h">6 horas</SelectItem>
-                <SelectItem value="24h">24 horas</SelectItem>
-                <SelectItem value="7d">7 dias</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="w-full sm:w-auto">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
+            <h1 className={theme === "dark" ? "text-[1.9rem] font-semibold tracking-[-0.04em] text-white" : "text-[1.9rem] font-semibold tracking-[-0.04em] text-[#0f172a]"}>
+              {copy.title}
+            </h1>
+            <p className={theme === "dark" ? "text-white/70" : "text-[#64748b]"}>{copy.subtitle}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
           <StatCard
-            title="Erros 4xx (24h)"
+            title={copy.errors4xx}
             value="287"
-            helper="+12% vs ontem"
+            helper={language === "en" ? "+12% vs yesterday" : language === "es" ? "+12% vs ayer" : "+12% vs ontem"}
             icon={<AlertTriangle className="h-4 w-4 text-yellow-500" />}
             valueClassName="text-3xl font-semibold tracking-[-0.04em] text-yellow-500"
           />
           <StatCard
-            title="Erros 5xx (24h)"
+            title={copy.errors5xx}
             value="78"
-            helper="-5% vs ontem"
+            helper={language === "en" ? "-5% vs yesterday" : language === "es" ? "-5% vs ayer" : "-5% vs ontem"}
             icon={<XCircle className="h-4 w-4 text-red-500" />}
             valueClassName="text-3xl font-semibold tracking-[-0.04em] text-red-500"
           />
           <StatCard
-            title="Error Rate"
+            title={copy.errorRate}
             value="0.8%"
-            helper="Dentro do intervalo saudável"
+            helper={copy.withinHealthyRange}
             icon={<AlertCircle className="h-4 w-4 text-muted-foreground" />}
-            extra={<Badge className="mt-2 bg-green-500/15 text-green-600 hover:bg-green-500/15">Saudável</Badge>}
+            extra={<Badge className="mt-2 bg-green-500/15 text-green-700 hover:bg-green-500/15">{copy.healthy}</Badge>}
           />
           <StatCard
-            title="Alertas Ativos"
+            title={copy.activeAlerts}
             value={String(alerts.filter((alert) => alert.active).length)}
-            helper="Requerem atenção imediata"
+            helper={copy.requireImmediateAttention}
             icon={<Bell className="h-4 w-4 text-primary" />}
           />
         </div>
 
-        <Card className="border-border/60 bg-white shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+        <Card className="border-[#e3e8ef] bg-white shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
           <CardHeader>
-            <CardTitle>Taxa de Erros (24h)</CardTitle>
-            <CardDescription>Distribuição de erros 4xx e 5xx ao longo do dia</CardDescription>
+            <CardTitle className="text-[#111827]">{copy.errorsRate24h}</CardTitle>
+            <CardDescription className="text-[#6b7280]">{copy.errorsRate24hDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] sm:h-[340px] xl:h-[380px] 2xl:h-[420px]">
@@ -262,91 +189,38 @@ export default function AdminErros() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 bg-white shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+        <Card className="border-[#e3e8ef] bg-white shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Alertas Inteligentes
+            <CardTitle className="flex items-center gap-2 text-[#111827]">
+              <Bell className="h-5 w-5 text-[#ff6a00]" />
+              {copy.smartAlerts}
             </CardTitle>
-            <CardDescription>Notificações automáticas de anomalias</CardDescription>
+            <CardDescription className="text-[#6b7280]">{copy.smartAlertsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {alerts.map((alert) => (
               <div
                 key={alert.id}
                 className={`flex items-start gap-4 rounded-[22px] border p-4 ${
-                  alert.active ? "border-border bg-muted/40" : "border-border/60 bg-muted/15 opacity-70"
+                  alert.active
+                    ? "border-[#d7dee8] bg-[#f3f6fa]"
+                    : "border-[#e5eaf1] bg-[#fafbfd]"
                 }`}
               >
                 {getAlertIcon(alert.type)}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{alert.module}</Badge>
-                    {alert.active ? <Badge className="bg-red-500/15 text-red-600 hover:bg-red-500/15">Ativo</Badge> : null}
+                    <Badge variant="outline" className="border-[#9aa4b2] bg-white text-[#374151]">{alert.module}</Badge>
+                    {alert.active ? <Badge className="bg-red-500/15 text-red-700 hover:bg-red-500/15">{copy.active}</Badge> : null}
                   </div>
-                  <p className="mt-2 break-words text-sm leading-6 text-[#0f172a]">{alert.message}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{alert.time}</p>
+                  <p className="mt-2 break-words text-sm leading-6 text-[#111827]">{alert.message}</p>
+                  <p className="mt-1 text-xs text-[#6b7280]">{alert.time}</p>
                 </div>
-                <Button variant="ghost" size="sm" className="shrink-0">
+                <Button variant="ghost" size="sm" className="shrink-0 text-[#6b7280] hover:bg-white hover:text-[#111827]">
                   {alert.active ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                 </Button>
               </div>
             ))}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 bg-white shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
-          <CardHeader>
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Terminal className="h-5 w-5" />
-                  Live Logs
-                </CardTitle>
-                <CardDescription>Feed em tempo real dos eventos do sistema</CardDescription>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <Select value={logFilter} onValueChange={setLogFilter}>
-                  <SelectTrigger className="w-full sm:w-36">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
-                    <SelectItem value="warn">Warning</SelectItem>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="debug">Debug</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant={isLive ? "default" : "outline"} size="sm" onClick={() => setIsLive(!isLive)} className="w-full sm:w-auto">
-                  {isLive ? (
-                    <>
-                      <span className="mr-2 h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                      Live
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Pausado
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[320px] overflow-y-auto rounded-[20px] bg-[#0d1117] p-3 font-mono text-xs sm:h-[380px] sm:p-4 sm:text-sm 2xl:h-[460px]">
-              {filteredLogs.map((log, index) => (
-                <div key={index} className="flex flex-col gap-1 rounded-md px-2 py-2 hover:bg-white/5 sm:flex-row sm:gap-4">
-                  <span className="shrink-0 text-gray-500">{log.timestamp}</span>
-                  <span className={`shrink-0 sm:w-14 ${getLevelColor(log.level)}`}>[{log.level}]</span>
-                  <span className="shrink-0 text-cyan-400 sm:w-20">[{log.module}]</span>
-                  <span className="break-words text-gray-300">{log.message}</span>
-                </div>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
           </CardContent>
         </Card>
       </MotionPageShell>

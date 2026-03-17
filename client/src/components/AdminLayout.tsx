@@ -1,21 +1,22 @@
-﻿import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Language } from "@/i18n/index";
 import { getAdminLayoutCopy, resolveAdminLegend } from "@/lib/dashboardLocale";
+import { getAdminLayoutUiCopy } from "@/lib/adminUiLocale";
+import { trpc } from "@/lib/trpc";
 import {
-  LayoutDashboard,
-  Users,
+  GitBranch,
+  BriefcaseBusiness,
   AlertTriangle,
   Search,
   Bell,
   LogOut,
   Menu,
   X,
-  Moon,
-  Sun,
   Settings,
   Circle,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "./ui/button";
@@ -41,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import { toast } from "sonner";
 
 interface ThemeContextType {
   theme: "light" | "dark";
@@ -58,12 +60,38 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-type NavKey = "dashboard" | "users" | "errors";
+type NavKey =
+  | "pipeline"
+  | "operations"
+  | "errors"
+  | "integrations"
+  | "kommo"
+  | "asaas"
+  | "googleCalendar"
+  | "googleForms"
+  | "contractsSheet"
+  | "dreSheet";
 
-const NAV_ITEMS: Array<{ key: NavKey; href: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { key: "dashboard", href: "/admin", icon: LayoutDashboard },
-  { key: "users", href: "/admin/usuarios", icon: Users },
+type NavItem = {
+  key: NavKey;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  compact?: boolean;
+};
+
+const PRIMARY_NAV_ITEMS: NavItem[] = [
+  { key: "pipeline", href: "/admin?view=pipeline", icon: GitBranch },
+  { key: "operations", href: "/admin?view=operacao", icon: BriefcaseBusiness },
   { key: "errors", href: "/admin/erros", icon: AlertTriangle },
+];
+
+const INTEGRATION_NAV_ITEMS: NavItem[] = [
+  { key: "kommo", href: "/admin/kommo", icon: ChevronRight, compact: true },
+  { key: "asaas", href: "/admin/asaas", icon: ChevronRight, compact: true },
+  { key: "googleCalendar", href: "/admin/google-calendar", icon: ChevronRight, compact: true },
+  { key: "googleForms", href: "/admin/google-forms", icon: ChevronRight, compact: true },
+  { key: "contractsSheet", href: "/admin/planilha-contratos", icon: ChevronRight, compact: true },
+  { key: "dreSheet", href: "/admin/planilha-dre", icon: ChevronRight, compact: true },
 ];
 
 const LANGUAGE_OPTIONS: Array<{ code: Language; label: string }> = [
@@ -72,38 +100,106 @@ const LANGUAGE_OPTIONS: Array<{ code: Language; label: string }> = [
   { code: "es", label: "ES" },
 ];
 
+function GlxSealLogo({ className, darkMode = false }: { className?: string; darkMode?: boolean }) {
+  const logoColor = darkMode ? "#f8fafc" : "#111111";
+  return (
+    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
+      <defs>
+        <path
+          id="glx-seal-top"
+          d="M 16,60 a 44,44 0 1,1 88,0"
+          fill="none"
+        />
+        <path
+          id="glx-seal-bottom"
+          d="M 104,60 a 44,44 0 1,1 -88,0"
+          fill="none"
+        />
+      </defs>
+      <circle cx="60" cy="60" r="52" fill="none" stroke={logoColor} strokeWidth="4.2" />
+      <circle cx="60" cy="60" r="36" fill="none" stroke={logoColor} strokeWidth="2.9" />
+      <text
+        x="60"
+        y="73"
+        textAnchor="middle"
+        fontSize="37"
+        fontWeight="900"
+        fill={logoColor}
+        fontFamily="Arial, sans-serif"
+        letterSpacing="-1.6"
+      >
+        GLX
+      </text>
+      <text
+        fill={logoColor}
+        fontSize="9.6"
+        fontWeight="900"
+        fontFamily="Arial, sans-serif"
+        letterSpacing="0.55"
+      >
+        <textPath href="#glx-seal-top" startOffset="50%" textAnchor="middle">
+          GROWTH.LEAN.EXECUTION
+        </textPath>
+      </text>
+      <text
+        fill={logoColor}
+        fontSize="9.6"
+        fontWeight="900"
+        fontFamily="Arial, sans-serif"
+        letterSpacing="0.55"
+      >
+        <textPath href="#glx-seal-bottom" startOffset="50%" textAnchor="middle">
+          GROWTH.LEAN.EXECUTION
+        </textPath>
+      </text>
+    </svg>
+  );
+}
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { language, setLanguage } = useLanguage();
   const copy = getAdminLayoutCopy(language);
-  const currentSearch = typeof window !== "undefined" ? window.location.search : "";
+  const uiCopy = getAdminLayoutUiCopy(language);
+  const [currentSearch, setCurrentSearch] = useState(() => (typeof window !== "undefined" ? window.location.search : ""));
+  const currentPathWithSearch = location === "/admin" && currentSearch ? `${location}${currentSearch}` : location;
   const legend = resolveAdminLegend(
     language,
-    location === "/admin" && currentSearch ? `${location}${currentSearch}` : location,
+    currentPathWithSearch,
   );
-  const showLegend = !(location === "/admin" && !currentSearch);
+  const showLegend = !(location === "/admin" && (!currentSearch || currentSearch.startsWith("?view=")));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
+  const theme: "light" | "dark" = "light";
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || "GLX Admin");
   const [profileEmail, setProfileEmail] = useState(user?.email || "admin@glx.local");
   const [profileLogo, setProfileLogo] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [integrationsOpen, setIntegrationsOpen] = useState(true);
   const motionCaps = useMotionCapabilities();
   const hoverEnabled = shouldEnableHoverMotion(motionCaps);
   const sharedHover = hoverEnabled ? hoverLift(motionCaps.motionLevel) : undefined;
   const sharedTap = tapPress(motionCaps.motionLevel);
 
-  const notifications = [
-    { id: 1, type: "warning", time: "2min", title: language === "en" ? "Churn above 5%" : language === "es" ? "Churn arriba de 5%" : "Churn acima de 5%" },
-    { id: 2, type: "info", time: "15min", title: language === "en" ? "New user created" : language === "es" ? "Nuevo usuario creado" : "Novo usuario cadastrado" },
-    { id: 3, type: "error", time: "1h", title: language === "en" ? "HTTP 500 spikes detected" : language === "es" ? "Picos de error 500 detectados" : "Picos de erro 500 detectados" },
-  ];
+  const notifications: Array<{ id: number; type: "warning" | "info" | "error"; time: string; title: string }> = [];
+  const changePasswordMutation = trpc.emailAuth.changePassword.useMutation();
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
+  const adminHelpSuggestions = uiCopy.helpSuggestions;
+
+  const filteredHelpSuggestions = adminHelpSuggestions
+    .filter((item) => {
+      const normalizedQuery = searchQuery.trim().toLowerCase();
+      if (!normalizedQuery) return true;
+      return item.question.toLowerCase().includes(normalizedQuery) || item.hint.toLowerCase().includes(normalizedQuery);
+    })
+    .slice(0, 5);
+
+  const toggleTheme = () => {};
 
   const handleLogout = async () => {
     await logout({ redirectTo: "/" });
@@ -111,8 +207,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (filteredHelpSuggestions.length > 0) {
+      const [firstSuggestion] = filteredHelpSuggestions;
+      setSearchMenuOpen(false);
+      handleNavClick(firstSuggestion.href);
+      return;
+    }
     if (searchQuery.trim()) {
-      window.location.href = `/admin/usuarios?search=${encodeURIComponent(searchQuery)}`;
+      handleNavClick(`/admin/usuarios?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
@@ -122,6 +224,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleExportPdf = () => {
     window.dispatchEvent(new CustomEvent("glx-admin-export-pdf"));
+  };
+
+  const handleNavClick = (href: string) => {
+    if (typeof window !== "undefined" && href.includes("?")) {
+      window.history.pushState({}, "", href);
+      setCurrentSearch(window.location.search);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      setSidebarOpen(false);
+      return;
+    }
+    setLocation(href);
+    setCurrentSearch("");
+    setSidebarOpen(false);
+  };
+
+  const handleSuggestionClick = (href: string, question: string) => {
+    setSearchQuery(question);
+    setSearchMenuOpen(false);
+    handleNavClick(href);
   };
 
   useEffect(() => {
@@ -152,6 +273,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const handleProfileSave = () => {
+    const shouldChangePassword = currentPassword.length > 0 || newPassword.length > 0 || confirmPassword.length > 0;
+
+    if (shouldChangePassword) {
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        toast.error(language === "en" ? "Fill in the current password, new password and confirmation." : language === "es" ? "Completa la contrasena actual, la nueva contrasena y la confirmacion." : "Preencha senha atual, nova senha e confirmacao.");
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        toast.error(language === "en" ? "The new password must be at least 6 characters long." : language === "es" ? "La nueva contrasena debe tener al menos 6 caracteres." : "A nova senha deve ter pelo menos 6 caracteres.");
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        toast.error(language === "en" ? "The new password confirmation does not match." : language === "es" ? "La confirmacion de la nueva contrasena no coincide." : "A confirmacao da nova senha nao confere.");
+        return;
+      }
+    }
+
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         "glx-admin-profile",
@@ -162,7 +302,34 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         }),
       );
     }
-    setProfileDialogOpen(false);
+
+    const finishSave = () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setProfileDialogOpen(false);
+      toast.success(language === "en" ? "Profile updated successfully." : language === "es" ? "Perfil actualizado con exito." : "Perfil atualizado com sucesso.");
+    };
+
+    if (shouldChangePassword) {
+      changePasswordMutation.mutate(
+        {
+          currentPassword,
+          newPassword,
+        },
+        {
+          onSuccess: () => {
+            finishSave();
+          },
+          onError: (error: { message?: string }) => {
+            toast.error(error.message || (language === "en" ? "Could not change the password." : language === "es" ? "No fue posible cambiar la contrasena." : "Nao foi possivel alterar a senha."));
+          },
+        },
+      );
+      return;
+    }
+
+    finishSave();
   };
 
   const sidebarBg = theme === "dark" ? "bg-[#1a1410]" : "bg-[#fffdfa]";
@@ -178,6 +345,26 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const headerBg = theme === "dark" ? "bg-[#1a1410]/95" : "bg-white/88";
   const borderColor = theme === "dark" ? "border-white/10" : "border-[#e9edf5]";
   const inputBg = theme === "dark" ? "bg-white/5" : "bg-[#f4f7fb]";
+
+  useEffect(() => {
+    if (
+      location.startsWith("/admin/kommo") ||
+      location.startsWith("/admin/asaas") ||
+      location.startsWith("/admin/google-calendar") ||
+      location.startsWith("/admin/google-forms") ||
+      location.startsWith("/admin/planilha-contratos") ||
+      location.startsWith("/admin/planilha-dre")
+    ) {
+      setIntegrationsOpen(true);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncSearch = () => setCurrentSearch(window.location.search);
+    window.addEventListener("popstate", syncSearch);
+    return () => window.removeEventListener("popstate", syncSearch);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -207,9 +394,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <div className="flex flex-col h-full">
             <div className={cn("flex items-center justify-between h-[76px] px-4", theme === "dark" ? "border-b border-white/5" : "border-b border-[#edf1f7]")}>
               <Link href="/admin" className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-[#ff7a1a] flex items-center justify-center shadow-[0_12px_28px_rgba(255,122,26,0.22)]">
-                  <span className="text-white font-bold text-sm">GLX</span>
-                </div>
+                <GlxSealLogo darkMode={theme === "dark"} className="h-14 w-14 shrink-0 drop-shadow-[0_12px_20px_rgba(15,23,42,0.16)]" />
                 <div className="flex flex-col">
                   <span className={cn("font-semibold text-sm", theme === "dark" ? "text-white" : "text-[#121826]")}>PERFORMANCE</span>
                   <span className={cn("text-[10px] uppercase tracking-wider", theme === "dark" ? "text-gray-500" : "text-[#94a3b8]")}>{copy.panelSubtitle}</span>
@@ -222,29 +407,77 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
             <nav className="flex-1 overflow-y-auto py-6 px-3">
               <ul className="space-y-1">
-                {NAV_ITEMS.map((item) => {
-                  const isActive = location === item.href || (item.href !== "/admin" && location.startsWith(item.href));
+                {PRIMARY_NAV_ITEMS.map((item) => {
+                  const isActive =
+                    item.href.includes("?")
+                      ? currentPathWithSearch === item.href
+                      : location === item.href || location.startsWith(`${item.href}/`);
                   return (
                     <li key={item.key}>
-                      <Link href={item.href}>
-                        <m.div
+                      <m.button
+                        type="button"
+                        layout
+                        whileHover={sharedHover}
+                        whileTap={sharedTap}
+                        onClick={() => handleNavClick(item.href)}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer text-left",
+                          isActive
+                            ? cn(accentColor, "text-white shadow-lg shadow-orange-500/20")
+                            : cn(sidebarText, sidebarHover, theme === "dark" ? "hover:text-white" : "hover:text-[#121826]"),
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {copy.navigation[item.key]}
+                      </m.button>
+                    </li>
+                  );
+                })}
+
+                <li className="pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIntegrationsOpen((current) => !current)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all",
+                      sidebarText,
+                      sidebarHover,
+                      theme === "dark" ? "hover:text-white" : "hover:text-[#121826]",
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Circle className="h-2.5 w-2.5 fill-current" />
+                      {copy.navigation.integrations}
+                    </span>
+                    <ChevronRight className={cn("h-4 w-4 transition-transform", integrationsOpen ? "rotate-90" : "")} />
+                  </button>
+                </li>
+
+                {integrationsOpen
+                  ? INTEGRATION_NAV_ITEMS.map((item) => {
+                    const isActive = location === item.href || location.startsWith(`${item.href}/`);
+                    return (
+                      <li key={item.key}>
+                        <m.button
+                          type="button"
                           layout
                           whileHover={sharedHover}
                           whileTap={sharedTap}
+                          onClick={() => handleNavClick(item.href)}
                           className={cn(
-                            "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
+                            "ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer text-left",
                             isActive
                               ? cn(accentColor, "text-white shadow-lg shadow-orange-500/20")
                               : cn(sidebarText, sidebarHover, theme === "dark" ? "hover:text-white" : "hover:text-[#121826]"),
                           )}
                         >
-                          <item.icon className="h-5 w-5 flex-shrink-0" />
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
                           {copy.navigation[item.key]}
-                        </m.div>
-                      </Link>
-                    </li>
-                  );
-                })}
+                        </m.button>
+                      </li>
+                    );
+                  })
+                  : null}
               </ul>
             </nav>
 
@@ -253,14 +486,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="mb-4 flex items-start gap-3">
                   <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-[#e2e8f0] bg-white">
                     {profileLogo ? (
-                      <img src={profileLogo} alt="Logo do perfil" className="h-full w-full rounded-full object-cover" />
+                      <img src={profileLogo} alt={uiCopy.profileLogoAlt} className="h-full w-full rounded-full object-cover" />
                     ) : (
                       <span className="text-lg font-bold text-[#0f172a]">{profileName.slice(0, 1) || "G"}</span>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94a3b8]">Perfil</div>
-                    <div className="mt-2 truncate text-[1.7rem] font-bold leading-none tracking-[-0.04em] text-[#0f172a]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94a3b8]">{uiCopy.profile}</div>
+                    <div className="mt-2 truncate text-base font-bold leading-none tracking-tight text-[#0f172a]">
                       {profileName}
                     </div>
                     <div className="mt-2 truncate text-sm text-[#94a3b8]">{profileEmail}</div>
@@ -271,40 +504,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   onClick={() => setProfileDialogOpen(true)}
                   className="mb-5 w-full rounded-2xl border border-[#dde6f1] bg-[#fff7f0] px-4 py-3 text-left text-sm font-semibold text-[#0f172a] transition hover:border-[#ffb280] hover:bg-[#fff2e6]"
                 >
-                  Configurar perfil
+                  {uiCopy.configureProfile}
                 </button>
 
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94a3b8]">Idioma</div>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94a3b8]">{uiCopy.language}</div>
                 <select
                   value={language}
                   onChange={(event) => setLanguage(event.target.value as Language)}
                   className="mb-5 h-12 w-full rounded-2xl border border-[#dde6f1] bg-[#f3f7fb] px-4 text-[15px] font-medium text-[#0f172a] outline-none transition focus:border-[#ffb280]"
                 >
-                  <option value="pt">Português</option>
+                  <option value="pt">Portugues</option>
                   <option value="en">English</option>
-                  <option value="es">Español</option>
+                  <option value="es">Espanol</option>
                 </select>
 
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94a3b8]">Tema</div>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="relative flex h-14 w-[108px] items-center rounded-full border border-[#dde6f1] bg-white px-2 shadow-[0_12px_26px_rgba(148,163,184,0.12)]"
-                  aria-label="Alternar tema"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center text-[#94a3b8]">
-                    <Sun className="h-4 w-4" />
-                  </span>
-                  <span className="flex h-10 w-10 items-center justify-center text-[#94a3b8]">
-                    <Moon className="h-4 w-4" />
-                  </span>
-                  <span className={cn(
-                    "absolute top-1.5 flex h-11 w-11 items-center justify-center rounded-full bg-[#ff7a1a] text-white shadow-[0_10px_18px_rgba(255,122,26,0.26)] transition-transform duration-300",
-                    theme === "light" ? "translate-x-0" : "translate-x-[52px]",
-                  )}>
-                    {theme === "light" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  </span>
-                </button>
               </div>
             </div>
           </div>
@@ -325,8 +538,47 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     placeholder={copy.searchPlaceholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setSearchMenuOpen(true)}
+                    onBlur={() => window.setTimeout(() => setSearchMenuOpen(false), 120)}
                     className={cn("h-12 rounded-full border", theme === "dark" ? "border-white/10" : "border-[#eef2f7]", inputBg, "pl-10 shadow-none focus:ring-2 focus:ring-[#e67e22]/30")}
                   />
+                  {searchMenuOpen ? (
+                    <div
+                      className={cn(
+                        "absolute left-0 right-0 top-[calc(100%+10px)] z-40 overflow-hidden rounded-[24px] border shadow-[0_24px_50px_rgba(15,23,42,0.12)]",
+                        theme === "dark" ? "border-white/10 bg-[#171411]" : "border-[#e8edf5] bg-white",
+                      )}
+                    >
+                      <div className={cn("px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em]", theme === "dark" ? "text-white/50" : "text-[#94a3b8]")}>
+                        {uiCopy.helpTitle}
+                      </div>
+                      <div className="px-2 pb-2">
+                        {filteredHelpSuggestions.length > 0 ? filteredHelpSuggestions.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handleSuggestionClick(item.href, item.question)}
+                            className={cn(
+                              "flex w-full flex-col rounded-[18px] px-3 py-3 text-left transition",
+                              theme === "dark" ? "hover:bg-white/5" : "hover:bg-[#f8fbff]",
+                            )}
+                          >
+                            <span className={cn("text-sm font-semibold", theme === "dark" ? "text-white" : "text-[#0f172a]")}>
+                              {item.question}
+                            </span>
+                            <span className={cn("mt-1 text-xs", theme === "dark" ? "text-white/65" : "text-[#64748b]")}>
+                              {item.hint}
+                            </span>
+                          </button>
+                        )) : (
+                          <div className={cn("px-3 py-4 text-sm", theme === "dark" ? "text-white/65" : "text-[#64748b]")}>
+                            {uiCopy.helpEmpty}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </form>
 
@@ -340,7 +592,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   )}
                 >
                   <span className="h-2.5 w-2.5 rounded-full bg-[#50d18d]" />
-                  Dados ao vivo
+                  {uiCopy.liveData}
                 </Button>
 
                 <DropdownMenu>
@@ -375,14 +627,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn("rounded-full", theme === "dark" ? "hover:bg-white/5" : "border border-[#e8edf5] bg-white shadow-sm hover:bg-gray-50")}
-                >
-                  <Settings className="h-5 w-5" />
-                </Button>
+
 
                 <Button
                   type="button"
@@ -390,7 +635,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   onClick={handleExportCsv}
                   className={cn("hidden xl:flex h-12 rounded-full px-5", theme === "dark" ? "hover:bg-white/5" : "border border-[#e8edf5] bg-white shadow-sm hover:bg-gray-50")}
                 >
-                  Exportar CSV
+                  {uiCopy.exportCsv}
                 </Button>
 
                 <Button
@@ -398,7 +643,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   onClick={handleExportPdf}
                   className="hidden md:flex h-12 rounded-full bg-[#ff7a1a] px-5 lg:px-6 text-white shadow-[0_18px_34px_rgba(255,122,26,0.24)] hover:bg-[#f06a09]"
                 >
-                  PDF Executivo
+                  {uiCopy.exportPdf}
                 </Button>
 
                 <Button
@@ -407,7 +652,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   onClick={handleLogout}
                   className={cn("hidden xl:flex h-12 rounded-full px-5", theme === "dark" ? "hover:bg-white/5" : "border border-[#e8edf5] bg-white shadow-sm hover:bg-gray-50")}
                 >
-                  Sair
+                  {uiCopy.closeSession}
                 </Button>
 
               </div>
@@ -441,9 +686,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
           <DialogContent className="border-[#e8edf5] bg-white sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle className="text-[#0f172a]">Configurar perfil</DialogTitle>
+              <DialogTitle className="text-[#0f172a]">{uiCopy.profileDialogTitle}</DialogTitle>
               <DialogDescription className="text-[#667085]">
-                Atualize a logo em PNG, o nome exibido e o e-mail do dashboard admin.
+                {uiCopy.profileDialogDescription}
               </DialogDescription>
             </DialogHeader>
 
@@ -451,18 +696,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div className="flex items-center gap-4 rounded-[24px] border border-[#edf2f7] bg-[#fbfcfe] p-4">
                 <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#e2e8f0] bg-white">
                   {profileLogo ? (
-                    <img src={profileLogo} alt="Preview da logo" className="h-full w-full object-cover" />
+                    <img src={profileLogo} alt={uiCopy.profileLogoPreviewAlt} className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-2xl font-bold text-[#0f172a]">{profileName.slice(0, 1) || "G"}</span>
                   )}
                 </div>
                 <div className="flex-1">
-                  <label className="mb-2 block text-sm font-semibold text-[#0f172a]">Logo em PNG</label>
+                  <label className="mb-2 block text-sm font-semibold text-[#0f172a]">{uiCopy.profileLogoLabel}</label>
                   <input
                     type="file"
                     accept="image/png"
                     onChange={handleProfileLogoChange}
-                    className="block w-full text-sm text-[#667085] file:mr-4 file:rounded-full file:border-0 file:bg-[#ff7a1a] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#f06a09]"
+                    className="block w-full rounded-2xl border border-[#ffd0b0] bg-white px-3 py-2 text-sm text-[#475467] file:mr-4 file:rounded-full file:border-0 file:bg-[#ff7a1a] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#f06a09]"
                   />
                 </div>
               </div>
@@ -470,26 +715,68 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div className="grid gap-4">
                 <div>
                   <label htmlFor="admin-profile-name" className="mb-2 block text-sm font-semibold text-[#0f172a]">
-                    Nome
+                    {uiCopy.name}
                   </label>
                   <Input
                     id="admin-profile-name"
                     value={profileName}
                     onChange={(event) => setProfileName(event.target.value)}
-                    className="h-12 rounded-2xl border-[#dde6f1] bg-[#f4f7fb]"
+                    className="h-12 rounded-2xl border-[#d8e2ee] bg-white text-[#0f172a] placeholder:text-[#98a2b3]"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="admin-profile-email" className="mb-2 block text-sm font-semibold text-[#0f172a]">
-                    E-mail
+                    {uiCopy.email}
                   </label>
                   <Input
                     id="admin-profile-email"
                     type="email"
                     value={profileEmail}
                     onChange={(event) => setProfileEmail(event.target.value)}
-                    className="h-12 rounded-2xl border-[#dde6f1] bg-[#f4f7fb]"
+                    className="h-12 rounded-2xl border-[#d8e2ee] bg-white text-[#0f172a] placeholder:text-[#98a2b3]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="admin-profile-current-password" className="mb-2 block text-sm font-semibold text-[#0f172a]">
+                    {uiCopy.currentPassword}
+                  </label>
+                  <Input
+                    id="admin-profile-current-password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    placeholder={uiCopy.currentPasswordPlaceholder}
+                    className="h-12 rounded-2xl border-[#d8e2ee] bg-white text-[#0f172a] placeholder:text-[#98a2b3]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="admin-profile-new-password" className="mb-2 block text-sm font-semibold text-[#0f172a]">
+                    {uiCopy.newPassword}
+                  </label>
+                  <Input
+                    id="admin-profile-new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder={uiCopy.newPasswordPlaceholder}
+                    className="h-12 rounded-2xl border-[#d8e2ee] bg-white text-[#0f172a] placeholder:text-[#98a2b3]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="admin-profile-confirm-password" className="mb-2 block text-sm font-semibold text-[#0f172a]">
+                    {uiCopy.confirmPassword}
+                  </label>
+                  <Input
+                    id="admin-profile-confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder={uiCopy.confirmPasswordPlaceholder}
+                    className="h-12 rounded-2xl border-[#d8e2ee] bg-white text-[#0f172a] placeholder:text-[#98a2b3]"
                   />
                 </div>
               </div>
@@ -500,16 +787,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => setProfileDialogOpen(false)}
-                className="rounded-full border border-[#e8edf5] bg-white px-5 hover:bg-gray-50"
+                className="rounded-full border border-[#d8e2ee] bg-white px-5 text-[#344054] hover:bg-[#f8fafc]"
               >
-                Cancelar
+                {uiCopy.cancel}
               </Button>
               <Button
                 type="button"
                 onClick={handleProfileSave}
+                disabled={changePasswordMutation.isPending}
                 className="rounded-full bg-[#ff7a1a] px-6 text-white hover:bg-[#f06a09]"
               >
-                Salvar perfil
+                {changePasswordMutation.isPending ? uiCopy.savingProfile : uiCopy.saveProfile}
               </Button>
             </DialogFooter>
           </DialogContent>

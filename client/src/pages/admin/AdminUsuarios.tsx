@@ -1,4 +1,4 @@
-import AdminLayout from "@/components/AdminLayout";
+import AdminLayout, { useAdminTheme } from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
 import { 
   Users, 
@@ -55,18 +55,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MIN_PLAN_BY_SECTION, PLAN_ACCESS, type PlanTier, type SectionId } from "@shared/controlTowerRules";
 import { MotionPageShell } from "@/animation/components/MotionPageShell";
+import { cn } from "@/lib/utils";
 
 const roleColors: Record<string, string> = {
-  admin: "bg-red-500/20 text-red-500",
-  user: "bg-blue-500/20 text-blue-500",
-  editor: "bg-green-500/20 text-green-500",
-  viewer: "bg-gray-500/20 text-gray-400",
+  admin: "border border-red-200 bg-red-50 text-red-700",
+  user: "border border-blue-200 bg-blue-50 text-blue-700",
+  editor: "border border-emerald-200 bg-emerald-50 text-emerald-700",
+  viewer: "border border-slate-200 bg-slate-50 text-slate-700",
 };
 
 const roleLabels: Record<string, string> = {
@@ -77,9 +79,9 @@ const roleLabels: Record<string, string> = {
 };
 
 const planColors: Record<string, string> = {
-  essencial: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  pro: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  enterprise: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  essencial: "border border-emerald-200 bg-emerald-50 text-emerald-700",
+  pro: "border border-amber-200 bg-amber-50 text-amber-700",
+  enterprise: "border border-violet-200 bg-violet-50 text-violet-700",
 };
 
 const planLabels: Record<string, string> = {
@@ -198,7 +200,8 @@ const createInitialNewUser = () => ({
 });
 
 export default function AdminUsuarios() {
-  const surfaceCardClass = "rounded-[28px] border border-[#e6edf7] bg-white shadow-[0_18px_45px_rgba(148,163,184,0.12)]";
+  const { theme } = useAdminTheme();
+  const surfaceCardClass = "rounded-[28px] border border-[#dbe5f0] bg-white shadow-[0_18px_45px_rgba(148,163,184,0.12)]";
   const compactStatCardClass = `${surfaceCardClass} overflow-hidden`;
   const tableCardClass = `${surfaceCardClass} overflow-hidden`;
 
@@ -208,6 +211,7 @@ export default function AdminUsuarios() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [newUser, setNewUser] = useState(createInitialNewUser);
+  const [activeTab, setActiveTab] = useState<"usuarios" | "planos" | "auditoria">("usuarios");
 
   // Fetch users from database
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = trpc.admin.getUsers.useQuery();
@@ -382,8 +386,8 @@ export default function AdminUsuarios() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-[2.1rem] font-bold tracking-[-0.03em] text-[#0f172a]">Controle de Acessos</h1>
-            <p className="mt-1 text-[1.05rem] text-[#64748b]">Gestão de usuários, planos e segurança (RBAC)</p>
+            <h1 className={cn("text-[2.1rem] font-bold tracking-[-0.03em]", theme === "dark" ? "text-white" : "text-[#0f172a]")}>Controle de Acessos</h1>
+            <p className={cn("mt-1 text-[1.05rem]", theme === "dark" ? "text-white/80" : "text-[#64748b]")}>Gestão de usuários, planos e segurança (RBAC)</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" className="h-11 rounded-2xl border-[#d7e1ef] bg-white px-5 text-[#334155] shadow-sm" onClick={() => refetchUsers()}>
@@ -580,8 +584,16 @@ export default function AdminUsuarios() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="flex space-x-2 border-b border-[#eef3f8] pb-1 overflow-x-auto scrollbar-hide">
+          <Button variant={activeTab === "usuarios" ? "default" : "ghost"} onClick={() => setActiveTab("usuarios")} className={cn("rounded-full", activeTab === "usuarios" && "bg-[#ff7a1a] text-white hover:bg-[#ff7a1a]/90")}>Gestão de Usuários</Button>
+          <Button variant={activeTab === "planos" ? "default" : "ghost"} onClick={() => setActiveTab("planos")} className={cn("rounded-full", activeTab === "planos" && "bg-[#ff7a1a] text-white hover:bg-[#ff7a1a]/90")}>Planos e Acessos</Button>
+          <Button variant={activeTab === "auditoria" ? "default" : "ghost"} onClick={() => setActiveTab("auditoria")} className={cn("rounded-full", activeTab === "auditoria" && "bg-[#ff7a1a] text-white hover:bg-[#ff7a1a]/90")}>Audit Log</Button>
+        </div>
+
+        {activeTab === "usuarios" && (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <Card className={compactStatCardClass}>
             <CardHeader className="flex flex-row items-center justify-between px-6 pt-6 pb-3">
               <CardTitle className="text-sm font-semibold text-[#94a3b8]">Total de Usuários</CardTitle>
@@ -630,9 +642,12 @@ export default function AdminUsuarios() {
             </CardContent>
           </Card>
         </div>
+        </>
+        )}
 
+        {activeTab === "planos" && (
         <Card className={tableCardClass}>
-          <CardHeader className="px-6 pt-6 pb-4">
+          <CardHeader className="px-6 pt-6 pb-4 text-[#0f172a]">
             <CardTitle className="text-[1.65rem] font-bold tracking-[-0.03em] text-[#0f172a]">Acesso por Plano no Dashboard</CardTitle>
             <CardDescription className="text-[0.98rem] leading-7 text-[#64748b]">
               Matriz centralizada por funcao. Alteracoes de plano aqui impactam diretamente os modulos liberados no dashboard.
@@ -677,8 +692,9 @@ export default function AdminUsuarios() {
             </Table>
           </CardContent>
         </Card>
+        )}
 
-        {/* Users Table */}
+        {activeTab === "usuarios" && (
         <Card className={tableCardClass}>
           <CardHeader className="px-6 pt-6 pb-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -693,11 +709,11 @@ export default function AdminUsuarios() {
                     placeholder="Buscar por nome ou email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-11 w-64 rounded-2xl border-[#d7e1ef] bg-[#fbfdff] pl-10"
+                    className="h-11 w-64 rounded-2xl border-[#d7e1ef] bg-[#f8fbff] pl-10 text-[#0f172a] placeholder:text-[#94a3b8]"
                   />
                 </div>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="h-11 w-32 rounded-2xl border-[#d7e1ef] bg-[#fbfdff]">
+                  <SelectTrigger className="h-11 w-32 rounded-2xl border-[#d7e1ef] bg-[#f8fbff] text-[#334155]">
                     <SelectValue placeholder="Permissão" />
                   </SelectTrigger>
                   <SelectContent>
@@ -707,7 +723,7 @@ export default function AdminUsuarios() {
                   </SelectContent>
                 </Select>
                 <Select value={planFilter} onValueChange={setPlanFilter}>
-                  <SelectTrigger className="h-11 w-36 rounded-2xl border-[#d7e1ef] bg-[#fbfdff]">
+                  <SelectTrigger className="h-11 w-36 rounded-2xl border-[#d7e1ef] bg-[#f8fbff] text-[#334155]">
                     <SelectValue placeholder="Plano" />
                   </SelectTrigger>
                   <SelectContent>
@@ -732,20 +748,20 @@ export default function AdminUsuarios() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="border-[#dbe5f0]">
                     <TableHead>Usuário</TableHead>
                     <TableHead>Permissão</TableHead>
-                    <TableHead className="h-12 text-[0.78rem] font-bold uppercase tracking-[0.16em] text-[#94a3b8]">Plano</TableHead>
+                    <TableHead className="h-12 text-[0.78rem] font-bold uppercase tracking-[0.16em] text-[#64748b]">Plano</TableHead>
                     <TableHead>API / Integrações</TableHead>
-                    <TableHead className="h-12 text-[0.78rem] font-bold uppercase tracking-[0.16em] text-[#94a3b8]">MFA</TableHead>
-                    <TableHead className="h-12 text-[0.78rem] font-bold uppercase tracking-[0.16em] text-[#94a3b8]">Status</TableHead>
+                    <TableHead className="h-12 text-[0.78rem] font-bold uppercase tracking-[0.16em] text-[#64748b]">MFA</TableHead>
+                    <TableHead className="h-12 text-[0.78rem] font-bold uppercase tracking-[0.16em] text-[#64748b]">Status</TableHead>
                     <TableHead>Último Acesso</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user.id} className="border-[#eef3f8]">
+                    <TableRow key={user.id} className="border-[#e9eff6]">
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#fff1e8]">
@@ -755,7 +771,7 @@ export default function AdminUsuarios() {
                           </div>
                           <div>
                             <p className="font-medium text-[#0f172a]">{user.name || "Sem nome"}</p>
-                            <p className="text-sm text-[#94a3b8]">{user.email || "Sem email"}</p>
+                            <p className="text-sm text-[#64748b]">{user.email || "Sem email"}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -769,7 +785,7 @@ export default function AdminUsuarios() {
                           value={(user as any).plan || "essencial"} 
                           onValueChange={(v) => handleUpdatePlan(user.id, v as PlanTier)}
                         >
-                          <SelectTrigger className="h-9 w-36 rounded-xl border-[#d7e1ef] bg-[#fbfdff]">
+                          <SelectTrigger className="h-9 w-36 rounded-xl border-[#d7e1ef] bg-[#f8fbff] text-[#334155]">
                             <SelectValue>
                               <Badge variant="outline" className={planColors[(user as any).plan || "essencial"]}>
                                 {planIcons[(user as any).plan || "essencial"]}
@@ -802,52 +818,52 @@ export default function AdminUsuarios() {
                       <TableCell>
                         {((user as any).integrationCount ?? 0) > 0 ? (
                           <div className="space-y-1">
-                            <Badge variant="outline" className="text-cyan-300 border-cyan-500/30">
+                            <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-700">
                               {(user as any).integrationCount} integração(ões)
                             </Badge>
                             <div className="flex flex-wrap gap-1">
                               {((user as any).integrationTypes ?? []).slice(0, 2).map((type: AdminProvisioningIntegrationType) => (
-                                <Badge key={`${user.id}-${type}`} variant="secondary" className="text-[10px]">
+                                <Badge key={`${user.id}-${type}`} variant="secondary" className="border border-slate-200 bg-slate-50 text-[10px] text-slate-700">
                                   {integrationTypeLabels[type] ?? type}
                                 </Badge>
                               ))}
                               {((user as any).integrationTypes ?? []).length > 2 && (
-                                <Badge variant="secondary" className="text-[10px]">
+                                <Badge variant="secondary" className="border border-slate-200 bg-slate-50 text-[10px] text-slate-700">
                                   +{((user as any).integrationTypes ?? []).length - 2}
                                 </Badge>
                               )}
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-[#94a3b8]">Sem API</span>
+                          <span className="text-xs font-medium text-[#64748b]">Sem API</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {user.mfaEnabled ? (
-                          <Badge variant="outline" className="text-green-500 border-green-500">
+                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                             <Shield className="h-3 w-3 mr-1" />
                             Ativo
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-yellow-500 border-yellow-500">
+                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
                             Inativo
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell>
                         {user.isActive ? (
-                          <Badge variant="outline" className="text-green-500 border-green-500">
+                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                             <UserCheck className="h-3 w-3 mr-1" />
                             Ativo
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-gray-500 border-gray-500">
+                          <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
                             <UserX className="h-3 w-3 mr-1" />
                             Inativo
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-[#94a3b8]">
+                      <TableCell className="font-medium text-[#64748b]">
                         {formatLastAccess(user.lastSignedIn)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -909,8 +925,9 @@ export default function AdminUsuarios() {
             )}
           </CardContent>
         </Card>
+        )}
 
-        {/* Audit Log */}
+        {activeTab === "auditoria" && (
         <Card className={tableCardClass}>
           <CardHeader className="px-6 pt-6 pb-4">
             <CardTitle className="flex items-center gap-2 text-[1.65rem] font-bold tracking-[-0.03em] text-[#0f172a]">
@@ -954,6 +971,7 @@ export default function AdminUsuarios() {
             )}
           </CardContent>
         </Card>
+        )}
       </MotionPageShell>
     </AdminLayout>
   );

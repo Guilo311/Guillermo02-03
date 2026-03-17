@@ -44,6 +44,9 @@ export interface DashboardIntegration {
   integrationMethod: string;
   cadence: string;
   scope: DashboardViewId[];
+  connectorApp: "kommo" | "asaas" | "googleCalendar" | "googleForms" | "contractsSheet" | "dreSheet";
+  connectorLabel: string;
+  endpoint: string;
 }
 
 export interface DashboardRoadmapPhase {

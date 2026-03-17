@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DashboardViewDefinition, KPIStatus } from "../types";
 import { decodeDashboardText } from "../text";
-import { ArrowRight, CalendarClock, FileText, Radar, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarClock, FileText, Radar } from "lucide-react";
 import { Link } from "wouter";
 
 const statusTone: Record<KPIStatus, string> = {
@@ -17,10 +17,6 @@ export function AdminExecutiveHero({ view }: { view: DashboardViewDefinition }) 
       <div className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#ffd8bf] bg-[#fff4ec] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-[#ff7a1a]">
-              <Sparkles className="h-3.5 w-3.5" />
-              Centro de comando executivo
-            </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#e7edf6] bg-white px-4 py-1.5 text-xs font-medium text-[#526070]">
               <CalendarClock className="h-3.5 w-3.5" />
               Leitura semanal + fechamento mensal

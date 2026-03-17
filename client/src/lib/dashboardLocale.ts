@@ -44,11 +44,18 @@ type AdminLayoutCopy = {
   panelSubtitle: string;
   navigation: {
     dashboard: string;
+    pipeline: string;
+    operations: string;
+    integrations: string;
     finance: string;
     users: string;
     system: string;
     kommo: string;
     asaas: string;
+    googleCalendar: string;
+    googleForms: string;
+    contractsSheet: string;
+    dreSheet: string;
     errors: string;
     flags: string;
     settings: string;
@@ -452,11 +459,18 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
     panelSubtitle: "Painel Admin",
     navigation: {
       dashboard: "Dashboard",
+      pipeline: "Pipeline & Funil",
+      operations: "Operacao Interna",
+      integrations: "Integracoes",
       finance: "Financeiro",
       users: "Usuarios",
       system: "Sistema",
       kommo: "Kommo",
       asaas: "Asaas",
+      googleCalendar: "Google Calendar",
+      googleForms: "Google Forms",
+      contractsSheet: "Planilha de Contratos",
+      dreSheet: "Planilha DRE",
       errors: "Erros e Logs",
       flags: "Feature Flags",
       settings: "Configurações",
@@ -486,7 +500,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
         ],
       },
       "/admin?view=pipeline": {
-        title: "Legenda - Visão 2 Pipeline & Funil",
+        title: "Pipeline & Funil",
         description:
           "Leitura do para-brisa comercial para garantir crescimento futuro.",
         bullets: [
@@ -496,7 +510,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
         ],
       },
       "/admin?view=operacao": {
-        title: "Legenda - Visão 1 Operação Interna",
+        title: "Operação Interna",
         description:
           "Leitura do retrovisor operacional para proteger receita, margem e capacidade.",
         bullets: [
@@ -536,7 +550,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
         ],
       },
       "/admin/kommo": {
-        title: "Legenda - Kommo",
+        title: "",
         description:
           "Parametros de OAuth, tokens e webhook para sincronizacao em tempo real.",
         bullets: [
@@ -546,13 +560,53 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
         ],
       },
       "/admin/asaas": {
-        title: "Legenda - Asaas",
+        title: "",
         description:
           "Parametros de token, webhook e fila para cobrancas em tempo real.",
         bullets: [
           "Access token autentica chamadas REST no Asaas.",
           "Webhook token valida eventos financeiros recebidos.",
           "Fila com retry evita perda de cobrancas e pagamentos.",
+        ],
+      },
+      "/admin/google-calendar": {
+        title: "",
+        description:
+          "Leitura gratuita de eventos do Google Calendar para contar calls e diagnosticos por tag.",
+        bullets: [
+          "Use tags como CALL-QUAL, CALL-FECH e DIAG-OS no titulo ou descricao.",
+          "Apps Script pode rodar a leitura periodica sem custo adicional.",
+          "Payload normalizado deve entrar no backend por webhook interno.",
+        ],
+      },
+      "/admin/google-forms": {
+        title: "",
+        description:
+          "Google Forms com respostas em Sheets e disparo automatico por gatilho.",
+        bullets: [
+          "Conecte o formulario a uma planilha de respostas oficial do Google.",
+          "Use onFormSubmit para enviar NPS e engajamento em tempo real.",
+          "A agregacao final deve seguir a regra de negocio ja definida no dashboard.",
+        ],
+      },
+      "/admin/planilha-contratos": {
+        title: "",
+        description:
+          "Leitura automatica da planilha de contratos para clientes ativos, MRR e churn.",
+        bullets: [
+          "A atualizacao da planilha continua manual, como no briefing.",
+          "Apps Script ou Sheets API podem ler a aba e publicar o snapshot.",
+          "O backend deve recalcular MRR, setups e status 12m sem alterar formulas.",
+        ],
+      },
+      "/admin/planilha-dre": {
+        title: "",
+        description:
+          "Snapshot mensal da planilha DRE para margem liquida, CAC e receita por hora.",
+        bullets: [
+          "O fechamento segue mensal, sem mudar a frequencia de negocio.",
+          "Sheets API ou Apps Script podem publicar os valores ja consolidados.",
+          "A regra de calculo final continua no backend do dashboard.",
         ],
       },
       "/admin/erros": {
@@ -591,11 +645,18 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
     panelSubtitle: "Admin Panel",
     navigation: {
       dashboard: "Dashboard",
+      pipeline: "Pipeline & Funnel",
+      operations: "Internal Operations",
+      integrations: "Integrations",
       finance: "Financial",
       users: "Users",
       system: "System",
       kommo: "Kommo",
       asaas: "Asaas",
+      googleCalendar: "Google Calendar",
+      googleForms: "Google Forms",
+      contractsSheet: "Contracts Sheet",
+      dreSheet: "DRE Sheet",
       errors: "Errors and Logs",
       flags: "Feature Flags",
       settings: "Settings",
@@ -694,6 +755,46 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
           "Retry queue prevents payment event loss.",
         ],
       },
+      "/admin/google-calendar": {
+        title: "",
+        description:
+          "Free Google Calendar ingestion for calls and diagnostics by tag.",
+        bullets: [
+          "Use CALL-QUAL, CALL-FECH and DIAG-OS in title or description.",
+          "Apps Script can schedule reads without extra cost.",
+          "Normalized events should be posted to an internal GLX webhook.",
+        ],
+      },
+      "/admin/google-forms": {
+        title: "",
+        description:
+          "Google Forms connected to Sheets with automatic trigger delivery.",
+        bullets: [
+          "Link the form to a native Google response sheet.",
+          "Use onFormSubmit to send NPS and engagement in real time.",
+          "Keep final KPI aggregation under existing backend rules.",
+        ],
+      },
+      "/admin/planilha-contratos": {
+        title: "",
+        description:
+          "Automated contracts sheet read for active clients, MRR and churn.",
+        bullets: [
+          "Manual sheet updates remain unchanged.",
+          "Apps Script or Sheets API can publish the current snapshot.",
+          "Backend recalculation should preserve the current formulas.",
+        ],
+      },
+      "/admin/planilha-dre": {
+        title: "",
+        description:
+          "Monthly DRE sheet snapshot for net margin, CAC and revenue per hour.",
+        bullets: [
+          "Monthly cadence remains the same.",
+          "Sheets API or Apps Script can publish the closed month values.",
+          "Final KPI formulas should remain in the backend layer.",
+        ],
+      },
       "/admin/erros": {
         title: "Legend - Errors and Logs",
         description:
@@ -730,11 +831,18 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
     panelSubtitle: "Panel Admin",
     navigation: {
       dashboard: "Dashboard",
+      pipeline: "Pipeline y Funnel",
+      operations: "Operacion Interna",
+      integrations: "Integraciones",
       finance: "Finanzas",
       users: "Usuarios",
       system: "Sistema",
       kommo: "Kommo",
       asaas: "Asaas",
+      googleCalendar: "Google Calendar",
+      googleForms: "Google Forms",
+      contractsSheet: "Planilla de Contratos",
+      dreSheet: "Planilla DRE",
       errors: "Errores y Logs",
       flags: "Feature Flags",
       settings: "Configuraciones",
@@ -831,6 +939,46 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
           "Access token autentica llamadas REST contra Asaas.",
           "Webhook token valida eventos financieros entrantes.",
           "La cola con retry evita perdida de eventos de pago.",
+        ],
+      },
+      "/admin/google-calendar": {
+        title: "",
+        description:
+          "Ingestion gratuita de Google Calendar para calls y diagnosticos por etiqueta.",
+        bullets: [
+          "Usa CALL-QUAL, CALL-FECH y DIAG-OS en titulo o descripcion.",
+          "Apps Script puede ejecutar lecturas programadas sin costo extra.",
+          "Los eventos normalizados deben entrar por webhook interno de GLX.",
+        ],
+      },
+      "/admin/google-forms": {
+        title: "",
+        description:
+          "Google Forms conectado a Sheets con disparo automatico por trigger.",
+        bullets: [
+          "Conecta el formulario a una hoja de respuestas nativa de Google.",
+          "Usa onFormSubmit para enviar NPS y engagement en tiempo real.",
+          "La agregacion final debe mantener la regla actual del dashboard.",
+        ],
+      },
+      "/admin/planilha-contratos": {
+        title: "",
+        description:
+          "Lectura automatica de la planilla de contratos para clientes activos, MRR y churn.",
+        bullets: [
+          "La actualizacion manual de la planilla se mantiene.",
+          "Apps Script o Sheets API pueden publicar el snapshot vigente.",
+          "El backend debe preservar las formulas actuales.",
+        ],
+      },
+      "/admin/planilha-dre": {
+        title: "",
+        description:
+          "Snapshot mensual de la planilla DRE para margen neto, CAC e ingreso por hora.",
+        bullets: [
+          "La frecuencia mensual se mantiene igual.",
+          "Sheets API o Apps Script pueden publicar el cierre del mes.",
+          "La formula final de KPI sigue en la capa backend.",
         ],
       },
       "/admin/erros": {

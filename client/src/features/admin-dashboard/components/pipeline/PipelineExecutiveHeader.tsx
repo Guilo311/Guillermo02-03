@@ -31,7 +31,7 @@ export function PipelineExecutiveHeader({
               O crescimento futuro esta garantido?
             </h1>
             <p className="max-w-3xl text-base leading-8 text-[#5d6b7d]">
-              Visao 2 do dashboard interno da GLX para leitura semanal do pipeline e checagem diaria quando houver prospeccao intensa.
+              Dashboard interno da GLX para leitura semanal do pipeline e checagem diaria quando houver prospeccao intensa.
             </p>
           </div>
 
