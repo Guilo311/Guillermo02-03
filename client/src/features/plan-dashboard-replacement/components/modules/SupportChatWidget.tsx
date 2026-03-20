@@ -11,6 +11,7 @@ type SupportChatWidgetProps = {
   filters?: Filters;
   activePlan?: 'ESSENTIAL' | 'PRO' | 'ENTERPRISE';
   kpiSourceMode?: KpiSourceMode;
+  lang?: 'PT' | 'EN' | 'ES';
 };
 
 type SupportMessage = {
@@ -73,11 +74,14 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function getGreeting() {
+function getGreeting(lang: 'pt' | 'en' | 'es' = 'pt') {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Oi, sou o Alex. Como posso te ajudar esta manhã?';
-  if (hour < 18) return 'Oi, sou o Alex. Como posso te ajudar esta tarde?';
-  return 'Oi, sou o Alex. Como posso te ajudar esta noite?';
+  const greetings = {
+    pt: hour < 12 ? 'Como posso te ajudar esta manhã?' : hour < 18 ? 'Como posso te ajudar esta tarde?' : 'Como posso te ajudar esta noite?',
+    en: hour < 12 ? 'How can I help you this morning?' : hour < 18 ? 'How can I help you this afternoon?' : 'How can I help you this evening?',
+    es: hour < 12 ? '¿Cómo puedo ayudarte esta mañana?' : hour < 18 ? '¿Cómo puedo ayudarte esta tarde?' : '¿Cómo puedo ayudarte esta noche?',
+  };
+  return greetings[lang];
 }
 
 function createWelcomeMessage(): SupportMessage {
@@ -476,9 +480,19 @@ const DARK = {
   shadow: '0 24px 56px rgba(0,0,0,0.55)',
 };
 
-export function SupportChatWidget({ theme: _theme, appointments, filters, activePlan, kpiSourceMode }: SupportChatWidgetProps) {
+export function SupportChatWidget({ theme: _theme, appointments, filters, activePlan, kpiSourceMode, lang = 'PT' }: SupportChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dashProfile = readDashboardProfile();
+  const [dashProfile, setDashProfile] = useState(readDashboardProfile);
+
+  useEffect(() => {
+    const sync = () => setDashProfile(readDashboardProfile());
+    window.addEventListener('glx-profile-updated', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('glx-profile-updated', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeNav, setActiveNav] = useState<NavItem>('conversas');
   const [input, setInput] = useState('');
@@ -831,9 +845,10 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                 borderRight: `1px solid ${DARK.border}`,
               }}
             >
+
               {/* Logo */}
               <div style={{ padding: '18px 16px 10px' }}>
-                <img src="/images/logo-transparent.png" alt="GLX" style={{ height: 28, objectFit: 'contain' }} />
+                <span style={{ fontSize: 20, fontWeight: 700, color: DARK.text, letterSpacing: '-0.3px' }}>Alex.</span>
               </div>
 
               {/* Nav */}
@@ -955,20 +970,11 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                   gap: 10,
                 }}
               >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                  }}
-                >
-                  {dashProfile.avatar
-                    ? <img src={dashProfile.avatar} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <img src="/images/logo-badge.jpg" alt="GLX" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  }
-                </div>
+                <img
+                  src="/images/logo-badge.jpg"
+                  alt="GLX"
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                />
                 <span style={{ color: DARK.muted, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {dashProfile.name}
                 </span>
@@ -1074,18 +1080,8 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                       padding: '0 24px',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <img
-                        src="/images/logo-badge.jpg"
-                        alt="GLX"
-                        style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
-                      />
-                      <span style={{ fontSize: 28, color: DARK.text, fontWeight: 700, letterSpacing: '-0.5px' }}>
-                        GLX Insights
-                      </span>
-                    </div>
                     <div style={{ fontSize: 20, color: DARK.text, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>
-                      {getGreeting()}
+                      {getGreeting(lang.toLowerCase() as 'pt' | 'en' | 'es')}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 4 }}>
                       {QUICK_REPLIES.map((reply) => (
@@ -1593,7 +1589,7 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
         title="Abrir suporte"
       >
         <img
-          src={SUPPORT_AVATAR_SRC}
+          src="/images/logo-badge.jpg"
           alt="GLX"
           style={{
             width: '100%',

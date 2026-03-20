@@ -11,6 +11,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PanelLeft,
+  PanelLeftClose,
   Search,
   ShieldAlert,
   Target,
@@ -657,6 +659,7 @@ function RoleDashboardPageContent({ view }: { view: RoleDashboardView }) {
   const [, setLocation] = useLocation();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { filters, setFilter, setFilters, clearFilters } = useGlobalFilters();
@@ -1271,25 +1274,43 @@ function RoleDashboardPageContent({ view }: { view: RoleDashboardView }) {
       {sidebarOpen ? <div className="fixed inset-0 z-30 bg-black/55 lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-72 border-r border-gray-200 bg-white transition-transform duration-300 lg:translate-x-0 dark:border-white/10 dark:bg-[#14110f]",
+        "fixed inset-y-0 left-0 z-40 border-r border-gray-200 bg-white transition-all duration-300 lg:translate-x-0 dark:border-white/10 dark:bg-[#14110f]",
+        sidebarCollapsed ? "lg:w-16 w-72" : "w-72",
         sidebarOpen ? "translate-x-0" : "-translate-x-full",
       )}>
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-white/10">
-            <div className="flex items-center gap-3">
+            <div className={cn("flex items-center gap-3 min-w-0", sidebarCollapsed && "lg:hidden")}>
               <img
                 src="/images/logo-badge.jpg"
                 alt="GLX"
-                className="h-10 w-10 rounded-full object-cover"
+                className="h-10 w-10 shrink-0 rounded-full object-cover"
               />
-              <div className="leading-tight">
+              <div className="leading-tight min-w-0">
                 <p className="text-sm font-semibold">PERFORMANCE</p>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">CONTROL TOWER</p>
               </div>
             </div>
-            <button className="rounded p-1 text-slate-500 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-white/10 lg:hidden" onClick={() => setSidebarOpen(false)}>
-              <X className="h-5 w-5" />
-            </button>
+            {sidebarCollapsed && (
+              <span className="hidden lg:flex mx-auto h-8 w-8 items-center justify-center rounded-full bg-[#e67e22] text-[11px] font-bold text-white select-none">
+                Alex
+              </span>
+            )}
+            <div className="flex items-center shrink-0">
+              <button
+                className="hidden lg:flex rounded p-1 text-slate-500 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-white/10"
+                onClick={() => setSidebarCollapsed(c => !c)}
+                title={sidebarCollapsed ? "Expandir sidebar" : "Minimizar sidebar"}
+              >
+                {sidebarCollapsed
+                  ? <PanelLeft className="h-5 w-5" />
+                  : <PanelLeftClose className="h-5 w-5" />
+                }
+              </button>
+              <button className="rounded p-1 text-slate-500 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-white/10 lg:hidden" onClick={() => setSidebarOpen(false)}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-4">
@@ -1302,15 +1323,17 @@ function RoleDashboardPageContent({ view }: { view: RoleDashboardView }) {
                     <button
                       type="button"
                       onClick={() => navigate(item)}
+                      title={sidebarCollapsed ? item.label : undefined}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
+                        "flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm transition",
+                        sidebarCollapsed ? "lg:justify-center lg:px-2 gap-0" : "gap-3",
                         active
                           ? "bg-[#e67e22] text-white"
                           : "text-slate-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
                       )}
                     >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className={cn("ml-3", sidebarCollapsed && "lg:hidden")}>{item.label}</span>
                     </button>
                   </li>
                 );
@@ -1369,7 +1392,7 @@ function RoleDashboardPageContent({ view }: { view: RoleDashboardView }) {
         </div>
       </aside>
 
-      <div className="lg:pl-72">
+      <div className={cn(sidebarCollapsed ? "lg:pl-16" : "lg:pl-72", "transition-all duration-300")}>
         <header className="sticky top-0 z-20 h-16 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#14110f]/95">
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
             <button className="rounded p-2 hover:bg-gray-100 dark:hover:bg-white/10 lg:hidden" onClick={() => setSidebarOpen(true)}>

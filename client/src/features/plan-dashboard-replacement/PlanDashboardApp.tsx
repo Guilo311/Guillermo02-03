@@ -847,6 +847,7 @@ function PlanDashboardApp() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('glx-dashboard-profile', JSON.stringify(profile));
+    window.dispatchEvent(new CustomEvent('glx-profile-updated'));
   }, [profile]);
 
   useEffect(() => {
@@ -1360,13 +1361,16 @@ function PlanDashboardApp() {
           </div>
         ) : null}
 
-        <SupportChatWidget
-          theme={deferredTheme}
-          appointments={resolvedAppointments}
-          filters={filters}
-          activePlan={activePlan}
-          kpiSourceMode={kpiSourceMode}
-        />
+        {activePlan !== 'ESSENTIAL' && (
+          <SupportChatWidget
+            theme={deferredTheme}
+            appointments={resolvedAppointments}
+            filters={filters}
+            activePlan={activePlan}
+            kpiSourceMode={kpiSourceMode}
+            lang={lang}
+          />
+        )}
       </div>
     </div>
   );
