@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import {
-  AreaChart, Area, BarChart, Bar, ComposedChart, Line, LineChart,
+  AreaChart, Area, BarChart, Bar, ComposedChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ReferenceLine, Legend, ScatterChart, Scatter, ZAxis, PieChart, Pie, Cell,
+  ReferenceLine, PieChart, Pie, Cell,
 } from 'recharts';
 import type { Appointment, Filters } from '../../data/mockData';
 import type { FinanceWeek, KPISummary } from '../../data/dashboardTypes';
@@ -20,7 +20,6 @@ const TS = { contentStyle: { background: 'var(--tooltip-bg, #1f2937)', border: '
 const TK = { fill: 'var(--text-muted, #9ca3af)', fontSize: 10 };
 const GR = { stroke: 'var(--chart-grid, #e5e7eb)', strokeOpacity: 0.5, strokeDasharray: '3 3' };
 
-function fmt(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }); }
 function fmtK(v: number) { return v >= 1000 ? `R$${(v/1000).toFixed(0)}k` : `R$${v.toFixed(0)}`; }
 function fmtPct(v: number) { return `${v.toFixed(1)}%`; }
 
@@ -69,9 +68,49 @@ interface Props {
   plan?: 'ESSENTIAL' | 'PRO' | 'ENTERPRISE';
 }
 
+// ─── Thresholds configuráveis via setup da clínica ───────────────────────────
+const THRESHOLDS = {
+  gross:    { p2: 0.80, p1: 1.00, target: 120_000 }, // target = meta mensal em R$
+  net:      { p1: 0.92, p3: 0.85 },                   // % do faturamento bruto
+  margin:   { p1: 20,   p3: 12 },                     // %
+  ticket:   { p2: 0.10 },                             // queda máx. P2 = <10%, P3 = ≥10%
+  inad:     { p1: 4,    p3: 8 },                      // %
+  expenses: { p1: 45,   p3: 60 },                     // % da receita
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, plan = 'ESSENTIAL' }: Props) {
   const isPro = plan === 'PRO' || plan === 'ENTERPRISE';
-  const grossSeries = financeWeeks.map(w => ({ label: w.label, value: w.gross }));
+
+  // ── Priority helpers (wired to THRESHOLDS) ─────────────────────────────────
+  const grossPct = kpis.grossRevenue / THRESHOLDS.gross.target;
+  const grossPriority: 'P1'|'P2'|'P3' =
+    grossPct >= THRESHOLDS.gross.p1 ? 'P1' : grossPct >= THRESHOLDS.gross.p2 ? 'P2' : 'P3';
+
+  const netPct = kpis.netRevenue / Math.max(1, kpis.grossRevenue);
+  const netPriority: 'P1'|'P2'|'P3' =
+    netPct >= THRESHOLDS.net.p1 ? 'P1' : netPct >= THRESHOLDS.net.p3 ? 'P2' : 'P3';
+
+  // Ticket: compare last two finance weeks to detect trend
+  const ticketPrev = financeWeeks.length >= 2 ? financeWeeks[financeWeeks.length - 2].ticketAvg : kpis.avgTicket;
+  const ticketDrop = ticketPrev > 0 ? (ticketPrev - kpis.avgTicket) / ticketPrev : 0;
+  const ticketPriority: 'P1'|'P2'|'P3' =
+    ticketDrop < 0 ? 'P1'            // subiu → P1
+    : ticketDrop < THRESHOLDS.ticket.p2 ? 'P2'  // queda < 10%
+    : 'P3';                                      // queda ≥ 10%
+
+  const expPriority: 'P1'|'P2'|'P3' =
+    kpis.fixedExpenseRatio < THRESHOLDS.expenses.p1 ? 'P1'
+    : kpis.fixedExpenseRatio < THRESHOLDS.expenses.p3 ? 'P2' : 'P3';
+
+  const lastCash = financeWeeks.length ? (() => {
+    let base = kpis.grossRevenue * 0.45;
+    financeWeeks.forEach(w => { base += w.net * 0.35 - w.gross * 0.28; });
+    return Math.max(5000, base);
+  })() : 0;
+  const cashPriority: 'P1'|'P3' = lastCash >= 0 ? 'P1' : 'P3';
+  // ───────────────────────────────────────────────────────────────────────────
+
   const movAvg = useMemo(() => {
     const vals = financeWeeks.map(w => w.gross);
     return vals.map((_, i) => {
@@ -94,28 +133,13 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
     return profs.map(p => {
       const rows = filtered.filter(a => a.professional === p && a.status === 'Realizada');
       const avg = rows.length ? rows.reduce((s, r) => s + r.revenue, 0) / rows.length : 0;
-      return { name: p.replace('Dr. ', 'Dr.').replace('Dra. ', 'Dra.'), ticket: Math.round(avg), benchmark: Math.round(kpis.avgTicket * 1.12) };
+      return { name: p.replace('Dr. ', 'Dr.').replace('Dra. ', 'Dra.'), ticket: Math.round(avg), mediaClinica: Math.round(kpis.avgTicket) };
     }).sort((a, b) => b.ticket - a.ticket);
   }, [filtered, kpis.avgTicket]);
 
   // KPI 13 — Inadimplência
   const inadSeries = financeWeeks.map(w => ({ label: w.label, value: +w.delinquencyPct.toFixed(1) }));
 
-  // KPI 14 — Fixed expenses stacked
-  const expCategories = ['Pessoal', 'Aluguel', 'Equipamentos', 'Marketing', 'Outros'];
-  const expColors = [C.purple, C.blue, C.amber, C.green, C.gray];
-  const expSeries = useMemo(() => financeWeeks.map(w => {
-    const total = w.gross * (w.fixedPct / 100);
-    return {
-      label: w.label,
-      Pessoal: Math.round(total * 0.50),
-      Aluguel: Math.round(total * 0.20),
-      Equipamentos: Math.round(total * 0.12),
-      Marketing: Math.round(total * 0.10),
-      Outros: Math.round(total * 0.08),
-      receita: Math.round(w.gross),
-    };
-  }), [financeWeeks]);
 
   // KPI 15 — Cash position
   let cashBase = kpis.grossRevenue * 0.45;
@@ -175,7 +199,7 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
   return (
     <div className="chart-grid">
       {/* KPI 9 — Gross revenue */}
-      <ChartCard title="09 Faturamento Bruto" kpiValue={fmtK(kpis.grossRevenue)} subtitle="Total faturado no período. Verde = dentro da meta." note="Barras = faturamento por período. Linha roxa = média móvel (3 períodos).">
+      <ChartCard title="Faturamento Bruto" priority={grossPriority} kpiValue={fmtK(kpis.grossRevenue)} subtitle="Total faturado no período antes de deduções" note="Barras = faturamento por período. Linha roxa = média móvel (3 períodos).">
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={grossWithAvg} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <CartesianGrid {...GR} />
@@ -184,12 +208,14 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
             <Tooltip {...TS} formatter={(v: any, n: any) => [fmtK(v), n === 'gross' ? 'Faturamento' : 'Média móvel']} />
             <Bar dataKey="gross" name="gross" fill={C.blue} radius={[4,4,0,0]} animationDuration={300} />
             <Line type="monotone" dataKey="avg" name="avg" stroke={C.purple} strokeWidth={2} dot={false} animationDuration={300} />
+            <ReferenceLine y={THRESHOLDS.gross.target} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `Meta ${fmtK(THRESHOLDS.gross.target)}`, fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={THRESHOLDS.gross.target * THRESHOLDS.gross.p2} stroke={C.amber} strokeDasharray="4 4" strokeWidth={1} label={{ value: `P2 ${fmtK(THRESHOLDS.gross.target * THRESHOLDS.gross.p2)}`, fill: C.amber, fontSize: 10 }} />
           </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 10 — Net revenue */}
-      <ChartCard title="10 Receita Líquida" kpiValue={fmtK(kpis.netRevenue)} subtitle="Receita bruta menos deduções, cancelamentos e inadimplência." note="Área verde = receita líquida. Linha tracejada = faturamento bruto (referência).">
+      <ChartCard title="Receita Líquida" priority={netPriority} kpiValue={fmtK(kpis.netRevenue)} subtitle="Faturamento bruto menos deduções, cancelamentos e inadimplência" note="Área verde = receita líquida. Linha tracejada = faturamento bruto (referência).">
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={netSeries} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
@@ -203,13 +229,15 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
             <YAxis tick={TK} tickFormatter={fmtK} />
             <Tooltip {...TS} formatter={(v: any, n: any) => [fmtK(v), n === 'net' ? 'Líquida' : 'Bruta']} />
             <Area type="monotone" dataKey="net" name="net" stroke={C.green} strokeWidth={2} fill="url(#netGrad)" animationDuration={300} />
-            {showTargets && <Line type="monotone" dataKey="gross" name="gross" stroke={C.blue} strokeWidth={1} strokeDasharray="3 3" dot={false} animationDuration={300} />}
+            <Line type="monotone" dataKey="gross" name="gross" stroke={C.blue} strokeWidth={1} strokeDasharray="3 3" dot={false} animationDuration={300} />
+            <ReferenceLine y={kpis.grossRevenue * THRESHOLDS.net.p1} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `P1 92%`, fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={kpis.grossRevenue * THRESHOLDS.net.p3} stroke={C.red}   strokeDasharray="4 4" strokeWidth={1}   label={{ value: `P3 85%`, fill: C.red,   fontSize: 10 }} />
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 11 — Margin */}
-      <ChartCard title="11 Margem Líquida Total (%)" kpiValue={fmtPct(curMargin)} priority={marginPriority(curMargin)} subtitle="EBITDA ÷ Receita líquida. Meta > 20%." note="Verde = acima da meta. Vermelho = abaixo.">
+      <ChartCard title="Margem Líquida Total (%)" kpiValue={fmtPct(curMargin)} priority={marginPriority(curMargin)} subtitle="Lucro Líquido ÷ Receita Líquida. Meta > 20%." note="Verde = acima da meta. Vermelho = abaixo.">
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={marginSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
@@ -223,28 +251,29 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
             <YAxis tick={TK} unit="%" />
             <Tooltip {...TS} formatter={(v: any) => [`${v}%`, 'Margem']} />
             <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2} fill="url(#mGrad)" animationDuration={300} />
-            {showTargets && <ReferenceLine y={20} stroke={C.gray} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'Meta 20%', fill: C.gray, fontSize: 10 }} />}
+            <ReferenceLine y={20} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P1 20%', fill: C.green, fontSize: 10 }} />
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 12 — Ticket médio */}
-      <ChartCard title="12 Ticket Médio por Profissional" kpiValue={fmtK(kpis.avgTicket)} subtitle="Receita média por consulta realizada." note="Barras laranja = seu ticket. Barras cinza = benchmark do mercado.">
+      <ChartCard title="Ticket Médio por Profissional" priority={ticketPriority} kpiValue={fmtK(kpis.avgTicket)} subtitle="Receita média por consulta realizada, comparada à média da clínica" note="Barras laranja = ticket do profissional. Barras cinza = média geral da clínica.">
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={byProf} layout="vertical" margin={{ top: 5, right: 40, left: 60, bottom: 0 }}>
+          <ComposedChart data={byProf} layout="vertical" margin={{ top: 5, right: 40, left: 60, bottom: 0 }}>
             <CartesianGrid {...GR} />
             <XAxis type="number" tick={TK} tickFormatter={fmtK} />
             <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-primary)', fontSize: 11 }} width={60} />
-            <Tooltip {...TS} formatter={(v: any, n: any) => [fmtK(v), n === 'ticket' ? 'Seu ticket' : 'Benchmark']} />
+            <Tooltip {...TS} formatter={(v: any, n: any) => [fmtK(v), n === 'ticket' ? 'Ticket do profissional' : 'Média da clínica']} />
             <Bar dataKey="ticket" name="ticket" fill={C.amber} radius={[0,4,4,0]} animationDuration={300} />
-            <Bar dataKey="benchmark" name="benchmark" fill={C.gray} fillOpacity={0.4} radius={[0,4,4,0]} animationDuration={300} />
-          </BarChart>
+            <Bar dataKey="mediaClinica" name="mediaClinica" fill={C.gray} fillOpacity={0.4} radius={[0,4,4,0]} animationDuration={300} />
+            <ReferenceLine x={kpis.avgTicket} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `Média ${fmtK(kpis.avgTicket)}`, fill: C.green, fontSize: 10 }} />
+          </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 13 — Inadimplência */}
       <ChartCard
-        title="13 Inadimplência (%)"
+        title="Inadimplência (%)"
         kpiValue={fmtPct(kpis.inadimplenciaRate)}
         priority={inadPriority(kpis.inadimplenciaRate)}
         subtitle="% do faturamento não recebido. Meta ≤ 4%."
@@ -263,7 +292,8 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
             <YAxis tick={TK} unit="%" />
             <Tooltip {...TS} formatter={(v: any) => [`${v}%`, 'Inadimplência']} />
             <Area type="monotone" dataKey="value" stroke={C.red} strokeWidth={2} fill="url(#inadGrad)" animationDuration={300} />
-            {showTargets && <ReferenceLine y={4} stroke={C.gray} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'Meta 4%', fill: C.gray, fontSize: 10 }} />}
+            <ReferenceLine y={4} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P1 4%', fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={8} stroke={C.red}   strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P3 8%', fill: C.red,   fontSize: 10 }} />
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -281,8 +311,7 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
           { name: 'Outros',        value: Math.round(totalFixed * 0.08), color: C.gray   },
         ];
         return (
-          <ChartCard title="14 Despesas Fixas / Receita (%)" kpiValue={fmtPct(ratio)}
-            subtitle="De cada R$100 que você recebe, quanto vai para custos fixos? Meta: menos de R$45.">
+          <ChartCard title="Despesas Fixas / Receita (%)" priority={expPriority} kpiValue={fmtPct(ratio)}>
             <div style={{ display:'flex', gap:24, alignItems:'center', height:200 }}>
               {/* Donut — onde o dinheiro vai */}
               <div style={{ flex:'0 0 180px', position:'relative' }}>
@@ -302,7 +331,6 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
               </div>
               {/* Right panel */}
               <div style={{ flex:1, display:'flex', flexDirection:'column', gap:14, justifyContent:'center' }}>
-                {/* Ratio bar */}
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
                     <span style={{ fontSize:12, color:'var(--text-muted)' }}>Comprometimento da receita</span>
@@ -310,7 +338,6 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
                   </div>
                   <div style={{ height:12, background:'var(--chart-grid,#e5e7eb)', borderRadius:6, overflow:'hidden', position:'relative' }}>
                     <div style={{ width:`${Math.min(ratio, 100)}%`, height:'100%', background:ratioColor, borderRadius:6, transition:'width 0.4s ease' }} />
-                    {/* Meta marker at 45% */}
                     <div style={{ position:'absolute', top:0, left:'45%', width:2, height:'100%', background:C.gray, opacity:0.7 }} />
                   </div>
                   <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
@@ -319,7 +346,6 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
                     <span style={{ fontSize:10, color:'var(--text-muted)' }}>100%</span>
                   </div>
                 </div>
-                {/* Category list */}
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                   {slices.map(d => (
                     <div key={d.name} style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -337,7 +363,7 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
       })()}
 
       {/* KPI 15 — Cash position */}
-      <ChartCard title="15 Posição de Caixa" kpiValue={fmtK(cashSeries.length ? cashSeries[cashSeries.length-1].cash : 0)} subtitle="Histórico e projeção da posição de caixa da clínica." note="Área verde = caixa positivo. Linha zero = ponto de alerta.">
+      <ChartCard title="Posição de Caixa" priority={cashPriority} kpiValue={fmtK(cashSeries.length ? cashSeries[cashSeries.length-1].cash : 0)} note="Área verde = caixa positivo. Linha zero = ponto de alerta.">
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={cashSeries} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
@@ -357,7 +383,7 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
       </ChartCard>
 
       {/* KPI 16 — DRE waterfall (PRO+, full width) */}
-      {isPro && <ChartCard title="16 DRE Gerencial — EBITDA" kpiValue={`${((ebitdaVal/recLiq)*100).toFixed(1)}%`}
+      {isPro && <ChartCard title="DRE Gerencial — EBITDA" kpiValue={`${((ebitdaVal/recLiq)*100).toFixed(1)}%`}
         priority={((ebitdaVal/recLiq)*100) >= 25 ? 'OK' : ((ebitdaVal/recLiq)*100) >= 20 ? 'P3' : 'P2'}
         subtitle="Cascata da demonstração de resultado gerencial." fullWidth note="Verde = entradas, Vermelho = saídas. Meta EBITDA > 25%.">
         <ResponsiveContainer width="100%" height={200}>
@@ -373,7 +399,7 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
         </ResponsiveContainer>
       </ChartCard>}
 
-      {isPro && <ChartCard title="17 Forecast de Receita" subtitle="Histórico e projeção para os próximos 3 períodos." fullWidth note="Linha sólida = histórico. Linha tracejada = projeção. Área = intervalo de confiança ±12%.">
+      {isPro && <ChartCard title="Forecast de Receita" subtitle="Histórico e projeção para os próximos 3 períodos." fullWidth note="Linha sólida = histórico. Linha tracejada = projeção. Área = intervalo de confiança ±12%.">
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={forecastSeries} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
@@ -395,7 +421,7 @@ export function FinanceiroModule({ financeWeeks, filtered, kpis, showTargets, pl
       </ChartCard>}
 
       {/* KPI 18 — Break-even (PRO+) */}
-      {isPro && <ChartCard title="18 Ponto de Break-even" subtitle="Consultas necessárias para cobrir todos os custos fixos." note={`BEP: ${bepConsults} consultas/mês · Atual: ${kpis.realized} · Margem de segurança: ${kpis.realized > bepConsults ? ((kpis.realized - bepConsults) / bepConsults * 100).toFixed(1) : '0.0'}%`}
+      {isPro && <ChartCard title="Ponto de Break-even" subtitle="Consultas necessárias para cobrir todos os custos fixos." note={`BEP: ${bepConsults} consultas/mês · Atual: ${kpis.realized} · Margem de segurança: ${kpis.realized > bepConsults ? ((kpis.realized - bepConsults) / bepConsults * 100).toFixed(1) : '0.0'}%`}
         kpiValue={`${bepConsults} consult.`} priority={kpis.realized >= bepConsults ? 'OK' : 'P2'} fullWidth>
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={breakEvenData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>

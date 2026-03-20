@@ -154,7 +154,7 @@ const sidebarMenus: Record<Plan, { items: string[] }> = {
 const i18n: Record<Lang, Record<string, string>> = {
   PT: {
     painelEssencial: 'Painel Start', painelPro: 'Painel Pro', painelEnterprise: 'Painel Enterprise',
-    subtitleEssencial: 'Dashboard executivo para clínicas em estruturação',
+    subtitleEssencial: 'Painel executivo de indicadores para gestão de clínicas',
     subtitlePro: 'Otimização inteligente por profissional, serviço e canal',
     subtitleEnterprise: 'Inteligência de rede multi-unidade para investidores',
     dadosVivo: 'Dados ao vivo', help: 'Ajuda', atualizar: 'Atualizar', configuracoes: 'Configurações',
@@ -599,18 +599,6 @@ const KpiExplainPanel = memo(({ meta, onClose }: { meta: KpiMeta; onClose: () =>
           <strong>{meta.formula}</strong>
           <p>{meta.howToCalculate}</p>
         </div>
-        <div className="kpi-explain-section">
-          <label>Fonte do dado</label>
-          <ul className="kpi-explain-list">
-            {meta.sources.map((source) => <li key={source}>{source}</li>)}
-          </ul>
-        </div>
-        <div className="kpi-explain-section">
-          <label>Campos usados</label>
-          <div className="kpi-explain-tags">
-            {meta.fields.map((field) => <span key={field}>{field}</span>)}
-          </div>
-        </div>
         {meta.note ? (
           <div className="kpi-explain-note">
             {meta.note}
@@ -774,7 +762,6 @@ function PlanDashboardApp() {
   const menu = sidebarMenus[activePlan];
   const titleKey = activePlan === 'ESSENTIAL' ? 'painelEssencial' : activePlan === 'PRO' ? 'painelPro' : 'painelEnterprise';
   const subtitleKey = activePlan === 'ESSENTIAL' ? 'subtitleEssencial' : activePlan === 'PRO' ? 'subtitlePro' : 'subtitleEnterprise';
-  const activeFilterCount = [filters.channel, filters.professional, filters.procedure, filters.status, filters.unit, filters.severity].filter(Boolean).length;
   const [profile, setProfile] = useState<DashboardProfile>(() => {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('glx-dashboard-profile');
@@ -1217,6 +1204,27 @@ function PlanDashboardApp() {
           <div className="sidebar-profile-email">{profileEmail || profileName}</div>
           {profilePhone ? <div className="sidebar-profile-phone">{profilePhone}</div> : null}
           <div style={{ marginTop: 14 }}>
+            <div className="selector-row-label">{translateText('Tema')}</div>
+            <div className="topbar-corner-theme">
+              <button
+                type="button"
+                className={`topbar-theme-btn ${theme === 'light' ? 'active' : ''}`}
+                aria-label={translateText('Claro')}
+                onClick={() => handleSetTheme('light')}
+              >
+                <Sun size={16} />
+              </button>
+              <button
+                type="button"
+                className={`topbar-theme-btn ${theme !== 'light' ? 'active' : ''}`}
+                aria-label={translateText('Escuro')}
+                onClick={() => handleSetTheme('dark')}
+              >
+                <Moon size={16} />
+              </button>
+            </div>
+          </div>
+          <div style={{ marginTop: 14 }}>
             <div className="selector-row-label">{t.idioma}</div>
             <div className="language-picker">
               <button
@@ -1291,26 +1299,7 @@ function PlanDashboardApp() {
               <span>{t[subtitleKey]}</span>
             </div>
           </div>
-          <div className="topbar-corner-theme">
-            <button
-              type="button"
-              className={`topbar-theme-btn ${theme === 'light' ? 'active' : ''}`}
-              aria-label={translateText('Claro')}
-              onClick={() => handleSetTheme('light')}
-            >
-              <Sun size={12} />
-            </button>
-            <button
-              type="button"
-              className={`topbar-theme-btn ${theme !== 'light' ? 'active' : ''}`}
-              aria-label={translateText('Escuro')}
-              onClick={() => handleSetTheme('dark')}
-            >
-              <Moon size={12} />
-            </button>
-          </div>
           <div className="topbar-actions">
-            {activeFilterCount > 0 && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginRight: 4 }}>{activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}</span>}
             <button className="topbar-btn live status-btn">{t.dadosVivo}</button>
             <button className="topbar-btn text-btn" onClick={handleRefresh}>{t.atualizar}</button>
             {exportPolicy.csv.visible && (

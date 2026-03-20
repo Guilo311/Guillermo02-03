@@ -15,8 +15,12 @@ const C = {
   purple: '#7F77DD',
   gray:   '#888780',
   channels: {
-    Instagram: '#E24B4A', Google: '#378ADD', Indicacao: '#EF9F27',
-    Organico:  '#1D9E75', Telefone: '#7F77DD', Presencial: '#888780',
+    Instagram:  '#E24B4A',
+    Google:     '#378ADD',
+    Indicação:  '#EF9F27',
+    Facebook:   '#1D9E75',
+    Whatsapp:   '#7F77DD',
+    Outros:     '#888780',
   } as Record<string,string>,
 };
 
@@ -92,28 +96,12 @@ interface Props {
 
 export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, plan = 'ESSENTIAL' }: Props) {
   const isPro = plan === 'PRO' || plan === 'ENTERPRISE';
-  const labels = agendaWeeks.map(w => w.label);
 
   // KPI 1 — No-show rate series
   const noShowSeries = useMemo(
     () => agendaWeeks.map(w => ({ label: w.label, value: +w.noShowRate.toFixed(1) })),
     [agendaWeeks],
   );
-
-  // KPI 2 — Occupancy slots view
-  const occupancyCurrent = agendaWeeks.length ? agendaWeeks[agendaWeeks.length - 1].occupancyRate : kpis.occupancyRate;
-  const slotsSeries = useMemo(
-    () => agendaWeeks.map(w => ({
-      label: w.label,
-      Realizadas: w.realized,
-      'No-Show': w.noShows,
-      Canceladas: w.canceled,
-    })),
-    [agendaWeeks],
-  );
-  const weeklyCapacityAvg = agendaWeeks.length
-    ? Math.round(agendaWeeks.reduce((s, w) => s + w.weeklyTarget, 0) / agendaWeeks.length)
-    : 50;
 
   // KPI 3 — Confirmation stacked
   const confirmSeries = useMemo(
@@ -189,9 +177,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
       const entry: Record<string, number | string> = { label: w.label };
       channelNames.forEach(ch => {
         entry[ch] = weekRows.filter(r => {
-          if (ch === 'Organico') return ['Organico', 'Facebook'].includes(r.channel);
-          if (ch === 'Telefone') return ['Telefone', 'Whatsapp', 'WhatsApp'].includes(r.channel);
-          if (ch === 'Presencial') return ['Presencial', 'OUTROS', 'Outros'].includes(r.channel);
+          if (ch === 'Facebook')  return ['Facebook', 'Organico'].includes(r.channel);
+          if (ch === 'Whatsapp')  return ['Whatsapp', 'WhatsApp', 'Telefone'].includes(r.channel);
+          if (ch === 'Outros')    return ['Outros', 'OUTROS', 'Presencial'].includes(r.channel);
+          if (ch === 'Indicação') return ['Indicacao', 'Indicação'].includes(r.channel);
           return r.channel === ch;
         }).length;
       });
@@ -199,77 +188,85 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
     });
   }, [agendaWeeks, filtered]);
 
-  // Priority helpers
-  // Business rules: No-show < 8%, Ocupação > 80%, Confirmações > 85%
-  // P3 = Crítico (vermelho), P2 = Alerta (amarelo), P1 = Bom (verde)
-  const noShowPriority = (v: number) => v > 12 ? 'P3' : v > 8 ? 'P2' : 'P1';
-  const occPriority = (v: number) => v < 65 ? 'P3' : v < 80 ? 'P2' : 'P1';
-  const confPriority = (v: number) => v < 72 ? 'P3' : v < 85 ? 'P2' : 'P1';
+  // Priority helpers — P1 (verde/meta) | P2 (amarelo/atenção) | P3 (vermelho/crítico)
+  const noShowPriority  = (v: number) => v > 15 ? 'P3' : v >= 8  ? 'P2' : 'P1'; // <8% P1 | 8-15% P2 | >15% P3
+  const occPriority     = (v: number) => v < 65 ? 'P3' : v < 80  ? 'P2' : 'P1'; // >80% P1 | 65-80% P2 | <65% P3
+  const confPriority    = (v: number) => v < 70 ? 'P3' : v < 85  ? 'P2' : 'P1'; // >85% P1 | 70-85% P2 | <70% P3
+  const leadTimePriority = (v: number) => v > 7 ? 'P3' : v >= 3  ? 'P2' : 'P1'; // <3d P1 | 3-7d P2 | >7d P3
 
-  const curNoShow = agendaWeeks.length ? agendaWeeks[agendaWeeks.length - 1].noShowRate : kpis.noShowRate;
+  // Consultas: P1 ≥ 100% da meta | P2 80-99% | P3 < 80%
+  const totalTarget = agendaWeeks.reduce((s, w) => s + w.weeklyTarget, 0) || 1;
+  const consultPct  = (kpis.realized / totalTarget) * 100;
+  const consultPriority = consultPct >= 100 ? 'P1' : consultPct >= 80 ? 'P2' : 'P3';
+
+  // Canal: compara última semana vs média das anteriores (queda %)
+  const lastWeekTotal = agendaWeeks.length > 0
+    ? (agendaWeeks[agendaWeeks.length - 1].realized + agendaWeeks[agendaWeeks.length - 1].noShows)
+    : 0;
+  const prevAvgTotal = agendaWeeks.length > 1
+    ? agendaWeeks.slice(0, -1).reduce((s, w) => s + w.realized + w.noShows, 0) / (agendaWeeks.length - 1)
+    : lastWeekTotal;
+  const channelDrop = prevAvgTotal > 0 ? ((prevAvgTotal - lastWeekTotal) / prevAvgTotal) * 100 : 0;
+  const channelPriority = channelDrop > 35 ? 'P3' : channelDrop > 20 ? 'P2' : 'P1';
+
   const curConf = agendaWeeks.length ? agendaWeeks[agendaWeeks.length - 1].confirmationRate : kpis.confirmationRate;
 
   return (
     <div className="chart-grid">
       {/* KPI 1 — No-show Rate */}
       <ChartCard
-        title="01 Taxa de No-show (%)"
-        subtitle="Faltas ÷ Agendamentos. Verde < 8%, Amarelo 8-12%, Vermelho > 12%"
-        priority={noShowPriority(curNoShow) as any}
-        kpiValue={`${curNoShow.toFixed(1)}%`}
-        note="Linha vermelha = meta 8%. Abaixo = saudável."
+        title="Taxa de No-show (%)"
+        priority={noShowPriority(kpis.noShowRate) as any}
+        kpiValue={`${kpis.noShowRate.toFixed(1)}%`}
+        subtitle="Pacientes que não compareceram sem cancelar"
+        note="Verde < 8% | Amarelo 8-15% | Vermelho > 15%"
       >
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={noShowSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="nsGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={C.red} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={C.red} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
+          <LineChart data={noShowSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid {...GRID_STYLE} />
             <XAxis dataKey="label" tick={TICK_STYLE} />
             <YAxis tick={TICK_STYLE} unit="%" domain={[0, 30]} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(v: any) => [`${v}%`, 'No-show']} />
-            <Area type="monotone" dataKey="value" stroke={C.red} strokeWidth={2} fill="url(#nsGrad)" dot={{ r: 3, fill: C.red }} animationDuration={300} />
-            {showTargets && <ReferenceLine y={8} stroke={C.gray} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'Meta 8%', fill: C.gray, fontSize: 10 }} />}
-          </AreaChart>
+            <ReferenceLine y={8}  stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P1 8%',  fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={15} stroke={C.red}   strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P3 15%', fill: C.red,   fontSize: 10 }} />
+            <Line type="monotone" dataKey="value" stroke={C.red} strokeWidth={2} dot={{ r: 3, fill: C.red }} activeDot={{ r: 5 }} animationDuration={300} />
+          </LineChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 2 — Taxa de Ocupação (semicircle gauge + sparkline) */}
       {(() => {
-        const occ = occupancyCurrent;
+        const occ = kpis.occupancyRate;
         const occColor = occ >= 80 ? C.green : occ >= 60 ? C.amber : C.red;
-        const gaugeData = [
-          { value: Math.min(occ, 100), fill: occColor },
-          { value: Math.max(0, 100 - occ), fill: 'var(--chart-grid, #e5e7eb)' },
-        ];
         const occSparkline = agendaWeeks.map(w => ({ label: w.label, value: +w.occupancyRate.toFixed(1) }));
         return (
           <ChartCard
-            title="02 Taxa de Ocupação"
-            subtitle="Quantas vagas foram preenchidas? Meta: acima de 80%."
-            priority={occPriority(occupancyCurrent) as any}
+            title="Taxa de Ocupação"
+            priority={occPriority(occ) as any}
             kpiValue={`${occ.toFixed(1)}%`}
+            subtitle="Consultas realizadas ÷ capacidade disponível × 100"
           >
-            {/* KPI number + barra de progresso */}
-            <div style={{ padding:'12px 0 16px' }}>
-              <div style={{ display:'flex', alignItems:'flex-end', gap:8, marginBottom:12 }}>
-                <span style={{ fontSize:48, fontWeight:800, color:occColor, lineHeight:1 }}>{occ.toFixed(1)}<span style={{ fontSize:28 }}>%</span></span>
-                <span style={{ fontSize:13, color:'var(--text-muted)', paddingBottom:6 }}>da agenda ocupada</span>
-              </div>
-              {/* Barra de progresso com marcador de meta */}
-              <div style={{ position:'relative', height:18, background:'var(--chart-grid,#e5e7eb)', borderRadius:9, overflow:'visible' }}>
-                <div style={{ width:`${Math.min(occ,100)}%`, height:'100%', background:occColor, borderRadius:9, transition:'width 0.5s ease' }} />
-                {/* Marcador de meta 80% */}
-                <div style={{ position:'absolute', top:-4, left:'80%', transform:'translateX(-50%)', display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-                  <div style={{ width:2, height:26, background:C.gray, borderRadius:1 }} />
-                  <span style={{ fontSize:10, color:C.gray, whiteSpace:'nowrap' }}>meta 80%</span>
-                </div>
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, fontSize:11, color:'var(--text-muted)' }}>
-                <span>0%</span><span>50%</span><span>100%</span>
+            {/* Semicircular gauge */}
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+              <ResponsiveContainer width="100%" height={140}>
+                <PieChart>
+                  <Pie
+                    data={[{ value: occ }, { value: Math.max(0, 100 - occ) }]}
+                    startAngle={180} endAngle={0}
+                    cx="50%" cy="100%"
+                    innerRadius={70} outerRadius={110}
+                    paddingAngle={0} dataKey="value"
+                    animationDuration={400}
+                  >
+                    <Cell fill={occColor} />
+                    <Cell fill="var(--chart-grid, #e5e7eb)" />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Valor central */}
+              <div style={{ position:'absolute', bottom:4, left:'50%', transform:'translateX(-50%)', textAlign:'center', pointerEvents:'none' }}>
+                <div style={{ fontSize:32, fontWeight:800, color:occColor, lineHeight:1 }}>{occ.toFixed(1)}<span style={{ fontSize:18 }}>%</span></div>
+                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>da agenda ocupada</div>
               </div>
             </div>
             {/* Sparkline tendência */}
@@ -284,7 +281,8 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
                 <XAxis dataKey="label" tick={TICK_STYLE} />
                 <YAxis tick={TICK_STYLE} unit="%" domain={[50, 100]} tickCount={3} />
                 <Tooltip {...TOOLTIP_STYLE} formatter={(v: any) => [`${v}%`, 'Ocupação']} />
-                <ReferenceLine y={80} stroke={C.gray} strokeDasharray="3 3" />
+                <ReferenceLine y={80} stroke={C.green} strokeDasharray="3 3" strokeWidth={1.5} label={{ value: 'P1 80%', fill: C.green, fontSize: 10 }} />
+                <ReferenceLine y={65} stroke={C.red}   strokeDasharray="3 3" strokeWidth={1.5} label={{ value: 'P3 65%', fill: C.red,   fontSize: 10 }} />
                 <Area type="monotone" dataKey="value" stroke={occColor} strokeWidth={2}
                   fill="url(#occGrad)" dot={false} animationDuration={300} />
               </AreaChart>
@@ -295,11 +293,11 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
       {/* KPI 3 — Confirmation stacked */}
       <ChartCard
-        title="03 Taxa de Confirmações Realizadas (%)"
-        subtitle="% de agendamentos que confirmaram presença"
+        title="Taxa de Confirmações Realizadas (%)"
         priority={confPriority(curConf) as any}
         kpiValue={`${curConf.toFixed(1)}%`}
-        note="Verde ≥ 85%, Amarelo 80-85%, Vermelho < 80%"
+        subtitle="Agendamentos confirmados antes da consulta"
+        note="Verde > 85% | Amarelo 70-85% | Vermelho < 70%"
       >
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={confirmSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -309,7 +307,8 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
             <Tooltip {...TOOLTIP_STYLE} />
             <Bar dataKey="confirmed" name="Confirmados" stackId="s" fill={C.green} radius={[0, 0, 0, 0]} animationDuration={300} />
             <Bar dataKey="notConfirmed" name="Não confirmados" stackId="s" fill="#F0997B" radius={[4, 4, 0, 0]} animationDuration={300} />
-            {showTargets && <ReferenceLine y={85} stroke={C.gray} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'Meta 85%', fill: C.gray, fontSize: 10 }} />}
+            <ReferenceLine y={85} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P1 85%', fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={70} stroke={C.red}   strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'P3 70%', fill: C.red,   fontSize: 10 }} />
             <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-muted)' }} />
           </BarChart>
         </ResponsiveContainer>
@@ -317,10 +316,11 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
       {/* KPI 4 — Consultations vs target */}
       <ChartCard
-        title="04 Consultas Realizadas vs Meta"
-        subtitle="Volume de consultas por período vs meta semanal"
+        title="Consultas Realizadas vs Meta"
+        priority={consultPriority as any}
         kpiValue={`${kpis.realized}`}
-        note="Barras = realizadas. Linha tracejada = meta semanal."
+        subtitle="Consultas no período comparadas à meta semanal"
+        note="Verde ≥ meta | Amarelo 80-99% da meta | Vermelho < 80% da meta"
       >
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={consultSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -329,15 +329,17 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
             <YAxis tick={TICK_STYLE} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Bar dataKey="realized" name="Realizadas" fill={C.blue} radius={[4, 4, 0, 0]} animationDuration={300} />
-            <ReferenceLine y={weeklyTargetAvg} stroke={C.gray} strokeDasharray="4 4" strokeWidth={1.5}
-              label={{ value: `Meta ${weeklyTargetAvg}`, position: 'insideTopRight', fill: C.gray, fontSize: 10 }} />
+            <ReferenceLine y={weeklyTargetAvg} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5}
+              label={{ value: `P1 ${weeklyTargetAvg}`, position: 'insideTopRight', fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={Math.round(weeklyTargetAvg * 0.8)} stroke={C.red} strokeDasharray="4 4" strokeWidth={1.5}
+              label={{ value: `P3 ${Math.round(weeklyTargetAvg * 0.8)}`, position: 'insideBottomRight', fill: C.red, fontSize: 10 }} />
           </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 5 — No-show cost (PRO+) */}
       {isPro && <ChartCard
-        title="05 Custo Estimado do No-show (R$)"
+        title="Custo Estimado do No-show (R$)"
         subtitle="Custo mensal e acumulado de consultas perdidas"
         fullWidth
         note="Barras = custo por período. Linha laranja = acumulado total."
@@ -359,7 +361,7 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
       {/* KPI 6 — Capacity loss (PRO+) */}
       {isPro && <ChartCard
-        title="06 Taxa de Perda de Capacidade não Recuperável (%)"
+        title="Taxa de Perda de Capacidade não Recuperável (%)"
         subtitle="No-shows + cancelamentos tardios ÷ total de slots"
         note="Limite crítico = 8% (PRO). Acima disso há impacto financeiro relevante."
       >
@@ -383,10 +385,11 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
       {/* KPI 7 — Lead time histogram */}
       <ChartCard
-        title="07 Lead Time do Agendamento (dias)"
-        subtitle="Distribuição de frequência por faixa de antecedência"
+        title="Lead Time do Agendamento (dias)"
+        priority={leadTimePriority(kpis.leadTimeDays) as any}
         kpiValue={`${kpis.leadTimeDays.toFixed(1)}d`}
-        note={`Mediana estimada: ${kpis.leadTimeDays.toFixed(1)} dias. Faixas > 13 dias indicam risco maior de no-show.`}
+        subtitle="Tempo médio entre o contato e a consulta agendada"
+        note="Verde < 3d | Amarelo 3-7d | Vermelho > 7d"
       >
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={leadTimeBuckets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -395,9 +398,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
             <YAxis tick={TICK_STYLE} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(v: any) => [v, 'Agendamentos']} />
             <Bar dataKey="count" name="Agendamentos" animationDuration={300} radius={[4, 4, 0, 0]}>
-              {leadTimeBuckets.map((entry, i) => (
-                <Cell key={i} fill={C.purple} fillOpacity={entry.opacity} />
-              ))}
+              {leadTimeBuckets.map((entry, i) => {
+                const zoneColor = i === 0 ? C.green : i <= 2 ? C.amber : C.red;
+                return <Cell key={i} fill={zoneColor} fillOpacity={entry.opacity} />;
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -413,8 +417,9 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
         const total = totals.reduce((s, d) => s + d.value, 0) || 1;
         return (
           <ChartCard
-            title="08 Agendamentos por Canal de Aquisição"
-            subtitle="De onde vieram seus pacientes no período selecionado."
+            title="Agendamentos por Canal de Aquisição"
+            priority={channelPriority as any}
+            subtitle="Distribuição de agendamentos por origem do paciente"
             fullWidth
           >
             <div style={{ display:'flex', gap:32, alignItems:'center', height:200 }}>

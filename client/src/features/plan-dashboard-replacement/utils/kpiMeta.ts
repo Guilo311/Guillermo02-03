@@ -29,9 +29,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("nps por")) {
     return {
       label,
-      formula: "NPS por profissional = media das notas do formulario pos-consulta segmentadas por profissional",
-      howToCalculate: "Filtre as respostas do profissional no periodo, some as notas validas e divida pela quantidade de respostas validas.",
-      sources: sourceSet(mode, ["Pesquisa NPS / WhatsApp / formulario de satisfacao", "Tabela consolidada com professionalId"]),
+      formula: "NPS por Profissional = Média das notas do formulário pós-consulta, segmentada por profissional",
+      howToCalculate: "Filtre as respostas do profissional no período, some as notas válidas e divida pela quantidade de respostas válidas.",
+      sources: sourceSet(mode, ["Pesquisa NPS / WhatsApp / formulário de satisfação", "Tabela consolidada com professionalId"]),
       fields: ["score", "professionalId", "responseAt", "unit"],
     };
   }
@@ -39,9 +39,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("nps")) {
     return {
       label,
-      formula: "NPS Geral = media das notas coletadas via formulario pos-consulta no periodo",
-      howToCalculate: "Some as notas validas do periodo e divida pelo total de respostas validas.",
-      sources: sourceSet(mode, ["Pesquisa NPS / WhatsApp / formulario de satisfacao", "Tabela de respostas NPS consolidada"]),
+      formula: "NPS Geral = Média das notas coletadas via formulário pós-consulta no período",
+      howToCalculate: "Some as notas válidas do período e divida pelo total de respostas válidas.",
+      sources: sourceSet(mode, ["Pesquisa NPS / WhatsApp / formulário de satisfação", "Tabela de respostas NPS consolidada"]),
       fields: ["score", "responseAt", "unit"],
     };
   }
@@ -49,10 +49,12 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("ocupacao") || key.includes("ociosidade")) {
     return {
       label,
-      formula: key.includes("ociosidade") ? "Ociosidade = 100 - Ocupacao" : "Ocupacao = Consultas realizadas / Capacidade disponivel x 100",
+      formula: key.includes("ociosidade")
+        ? "Ociosidade (%) = 100 − Taxa de Ocupação"
+        : "Ocupação (%) = Consultas realizadas ÷ Capacidade disponível × 100",
       howToCalculate: key.includes("ociosidade")
-        ? "Calcule primeiro a ocupacao do periodo e subtraia de 100%."
-        : "Some consultas realizadas no periodo, some a capacidade disponivel dos slots/profissionais/unidades equivalentes e divida realizadas por capacidade.",
+        ? "Calcule a taxa de ocupação do período e subtraia de 100%. O resultado representa a capacidade ociosa da clínica."
+        : "Some as consultas realizadas no período, some a capacidade disponível dos slots/profissionais/unidades e divida realizadas por capacidade.",
       sources: sourceSet(mode, ["Agenda / CRM de agenda", "Cadastro de capacidade por profissional/slot/unidade"]),
       fields: ["status", "scheduledAt", "professionalId", "unit", "slotCapacity"],
     };
@@ -61,9 +63,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("confirmacoes")) {
     return {
       label,
-      formula: "Confirmacoes = Agendamentos confirmados / Total agendado x 100",
-      howToCalculate: "Conte os agendamentos confirmados no periodo e divida pelo total agendado no mesmo recorte.",
-      sources: sourceSet(mode, ["CRM / agenda / WhatsApp", "Historico de confirmacao"]),
+      formula: "Confirmações (%) = Agendamentos confirmados ÷ Total agendado × 100",
+      howToCalculate: "Conte os agendamentos confirmados no período e divida pelo total agendado no mesmo recorte.",
+      sources: sourceSet(mode, ["CRM / agenda / WhatsApp", "Histórico de confirmação"]),
       fields: ["status", "confirmedAt", "scheduledAt", "channel", "professionalId"],
     };
   }
@@ -71,9 +73,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("perda de capacidade")) {
     return {
       label,
-      formula: "Perda de capacidade = (No-shows + cancelamentos < 24h) / Total de consultas agendadas x 100",
-      howToCalculate: "Some faltas e cancelamentos feitos com menos de 24h de antecedencia e divida pelo total agendado.",
-      sources: sourceSet(mode, ["Agenda / CRM", "Historico de cancelamento com timestamp"]),
+      formula: "Perda de Capacidade (%) = (No-shows + Cancelamentos < 24h) ÷ Total agendado × 100",
+      howToCalculate: "Some as faltas e os cancelamentos feitos com menos de 24h de antecedência, e divida pelo total de consultas agendadas no período.",
+      sources: sourceSet(mode, ["Agenda / CRM", "Histórico de cancelamento com timestamp"]),
       fields: ["status", "scheduledAt", "canceledAt", "cancellationHoursBefore"],
     };
   }
@@ -81,8 +83,8 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("no show por canal")) {
     return {
       label,
-      formula: "No-show por canal = No-shows do canal / Agendados do canal x 100",
-      howToCalculate: "Filtre o canal desejado, conte faltas e divida pelo total agendado daquele canal.",
+      formula: "No-show por Canal (%) = No-shows do canal ÷ Agendados do canal × 100",
+      howToCalculate: "Filtre pelo canal desejado, conte as faltas e divida pelo total de agendamentos daquele canal no período.",
       sources: sourceSet(mode, ["Agenda / CRM", "Origem do lead / canal"]),
       fields: ["status", "channel", "scheduledAt"],
     };
@@ -91,9 +93,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("no show") || key.includes("noshow")) {
     return {
       label,
-      formula: "No-Show = Consultas faltadas / Consultas agendadas x 100",
-      howToCalculate: "Conte agendamentos com status de falta no periodo e divida pelo total de agendamentos do mesmo recorte.",
-      sources: sourceSet(mode, ["Agenda / recepcao / CRM", "Historico de status da consulta"]),
+      formula: "No-Show (%) = Consultas faltadas ÷ Consultas agendadas × 100",
+      howToCalculate: "Conte os agendamentos com status de falta no período e divida pelo total de agendamentos do mesmo recorte.",
+      sources: sourceSet(mode, ["Agenda / recepção / CRM", "Histórico de status da consulta"]),
       fields: ["status", "scheduledAt", "channel", "professionalId", "unit"],
     };
   }
@@ -101,9 +103,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("consultas realizadas")) {
     return {
       label,
-      formula: "Consultas realizadas = total de consultas efetivamente realizadas na semana ou periodo",
-      howToCalculate: "Conte somente consultas com status realizado no recorte selecionado.",
-      sources: sourceSet(mode, ["Agenda / CRM", "Historico de atendimentos"]),
+      formula: "Consultas Realizadas = Total de consultas efetivamente realizadas no período",
+      howToCalculate: "Conte somente as consultas com status 'realizado' no recorte de tempo selecionado.",
+      sources: sourceSet(mode, ["Agenda / CRM", "Histórico de atendimentos"]),
       fields: ["status", "performedAt", "professionalId", "unit"],
     };
   }
@@ -111,9 +113,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("custo") && key.includes("no show")) {
     return {
       label,
-      formula: "Custo estimado do no-show = Numero de no-shows x Ticket medio do periodo",
-      howToCalculate: "Conte os no-shows do periodo e multiplique pelo ticket medio observado no mesmo recorte.",
-      sources: sourceSet(mode, ["Agenda / CRM", "Financeiro / ticket medio"]),
+      formula: "Custo Estimado do No-Show = Nº de no-shows × Ticket médio do período",
+      howToCalculate: "Conte os no-shows do período e multiplique pelo ticket médio observado no mesmo recorte.",
+      sources: sourceSet(mode, ["Agenda / CRM", "Financeiro / ticket médio"]),
       fields: ["status", "ticketMedio", "scheduledAt"],
     };
   }
@@ -121,9 +123,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("lead time")) {
     return {
       label,
-      formula: "Lead time = Dias entre primeiro contato e confirmacao",
-      howToCalculate: "Subtraia a data do primeiro contato da data de confirmacao do agendamento e consolide a media no recorte.",
-      sources: sourceSet(mode, ["Kommo / CRM / agenda", "Historico de interacoes"]),
+      formula: "Lead Time = Média de dias entre o primeiro contato e a confirmação do agendamento",
+      howToCalculate: "Subtraia a data do primeiro contato da data de confirmação do agendamento e consolide a média no recorte selecionado.",
+      sources: sourceSet(mode, ["Kommo / CRM / agenda", "Histórico de interações"]),
       fields: ["leadId", "createdAt", "confirmedAt", "channel"],
     };
   }
@@ -131,8 +133,8 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("faturamento bruto")) {
     return {
       label,
-      formula: "Faturamento bruto = Soma de todos os recebimentos do mes antes de deducoes",
-      howToCalculate: "Some os recebimentos do periodo antes de cancelar, estornar ou baixar inadimplencia.",
+      formula: "Faturamento Bruto = Soma de todos os recebimentos do mês, antes de deduções",
+      howToCalculate: "Some todos os recebimentos do período antes de aplicar cancelamentos, estornos ou baixas por inadimplência.",
       sources: sourceSet(mode, ["Asaas / ERP / financeiro principal"]),
       fields: ["amount", "confirmedAt", "status", "billingPeriod"],
     };
@@ -141,9 +143,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("receita liquida")) {
     return {
       label,
-      formula: "Receita Liquida = Faturamento Bruto - Cancelamentos - Inadimplencia - Estornos",
-      howToCalculate: "Parta do bruto do periodo e desconte cancelamentos, inadimplencia e estornos do mesmo recorte.",
-      sources: sourceSet(mode, ["Asaas / ERP / financeiro principal", "Recebiveis / cancelamentos / estornos"]),
+      formula: "Receita Líquida = Faturamento Bruto − Cancelamentos − Inadimplência − Estornos",
+      howToCalculate: "Parta do faturamento bruto do período e desconte cancelamentos, inadimplência e estornos do mesmo recorte.",
+      sources: sourceSet(mode, ["Asaas / ERP / financeiro principal", "Recebíveis / cancelamentos / estornos"]),
       fields: ["grossAmount", "cancellationAmount", "defaultAmount", "chargebackAmount", "confirmedAt"],
     };
   }
@@ -151,8 +153,8 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("ebitda")) {
     return {
       label,
-      formula: "EBITDA = Receita Liquida - CMV - Despesas variaveis - Despesas fixas pro-rata",
-      howToCalculate: "Parta da receita liquida do periodo, subtraia CMV, despesas variaveis e a parcela fixa apropriada ao periodo.",
+      formula: "EBITDA = Receita Líquida − CMV − Despesas variáveis − Despesas fixas pro-rata",
+      howToCalculate: "Parta da receita líquida do período, subtraia o CMV, as despesas variáveis e a parcela fixa proporcional ao período.",
       sources: sourceSet(mode, ["Asaas / ERP / DRE gerencial", "Centro de custos / despesas operacionais"]),
       fields: ["netRevenue", "cmv", "variableCosts", "fixedCosts", "competenceDate"],
     };
@@ -161,9 +163,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("margem por servico") || key.includes("margem por procedimento")) {
     return {
       label,
-      formula: "Margem por servico = (Receita do servico - Custo direto com insumo e repasse) / Receita x 100",
-      howToCalculate: "Agrupe por servico ou procedimento, desconte insumos e repasses diretos e divida o resultado pela receita do proprio servico.",
-      sources: sourceSet(mode, ["Financeiro / ERP", "CRM / agenda / cadastro de servicos"]),
+      formula: "Margem por Serviço (%) = (Receita do serviço − Custo direto com insumo e repasse) ÷ Receita × 100",
+      howToCalculate: "Agrupe por serviço ou procedimento, desconte insumos e repasses diretos, e divida o resultado pela receita do próprio serviço.",
+      sources: sourceSet(mode, ["Financeiro / ERP", "CRM / agenda / cadastro de serviços"]),
       fields: ["serviceId", "revenue", "directCost", "repasse", "performedAt"],
     };
   }
@@ -171,8 +173,8 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("margem por medico")) {
     return {
       label,
-      formula: "Margem por medico = (Receita gerada - Repasse contratual - Custo hora proporcional) / Receita x 100",
-      howToCalculate: "Agrupe por profissional, desconte repasse contratual e custo hora proporcional e divida pela receita gerada.",
+      formula: "Margem por Médico (%) = (Receita gerada − Repasse contratual − Custo hora proporcional) ÷ Receita × 100",
+      howToCalculate: "Agrupe por profissional, desconte o repasse contratual e o custo hora proporcional, e divida pela receita gerada.",
       sources: sourceSet(mode, ["Financeiro / ERP", "CRM / agenda / cadastro de profissionais"]),
       fields: ["professionalId", "revenue", "repasse", "hourCost", "performedAt"],
     };
@@ -181,8 +183,8 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("margem")) {
     return {
       label,
-      formula: "Margem Liquida = Lucro Liquido / Receita Liquida x 100",
-      howToCalculate: "Defina o lucro liquido do periodo, divida pela receita liquida do mesmo recorte e multiplique por 100.",
+      formula: "Margem Líquida (%) = Lucro Líquido ÷ Receita Líquida × 100",
+      howToCalculate: "Calcule o lucro líquido do período, divida pela receita líquida do mesmo recorte e multiplique por 100.",
       sources: sourceSet(mode, ["Asaas / ERP / centro de custos", "Cadastro de repasse, custo direto e custo hora"]),
       fields: ["profit", "netRevenue", "expenseType", "competenceDate"],
     };
@@ -191,8 +193,8 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("ticket")) {
     return {
       label,
-      formula: "Ticket Medio = Receita Total / Numero de consultas realizadas no periodo",
-      howToCalculate: "Some a receita total do periodo e divida pelo total de consultas realizadas no mesmo recorte.",
+      formula: "Ticket Médio = Receita Total ÷ Nº de consultas realizadas no período",
+      howToCalculate: "Some a receita total do período e divida pelo total de consultas realizadas no mesmo recorte.",
       sources: sourceSet(mode, ["Asaas / ERP / financeiro", "Agenda / consultas realizadas"]),
       fields: ["grossRevenue", "realizedCount", "procedureId", "professionalId"],
     };
@@ -201,31 +203,31 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("inadimpl")) {
     return {
       label,
-      formula: "Inadimplencia = Valores nao pagos / Faturado x 100",
-      howToCalculate: "Some os valores em aberto ou vencidos e divida pelo faturado do mesmo recorte.",
-      sources: sourceSet(mode, ["Asaas / recebiveis", "Financeiro / faturamento"]),
+      formula: "Inadimplência (%) = Valores não pagos ÷ Total faturado × 100",
+      howToCalculate: "Some os valores em aberto ou vencidos e divida pelo total faturado no mesmo recorte.",
+      sources: sourceSet(mode, ["Asaas / recebíveis", "Financeiro / faturamento"]),
       fields: ["unpaidAmount", "grossRevenue", "dueAt", "paidAt"],
-      note: "Faixas: P1 (meta) < 4% | P2: 4% a 8% | P3: > 8%.",
+      note: "Faixas de referência: P1 (meta) < 4% | P2: 4% a 8% | P3: > 8%.",
     };
   }
 
   if (key.includes("despesas fixas")) {
     return {
       label,
-      formula: "Despesas Fixas / Receita = Total de despesas fixas / Receita Liquida x 100",
-      howToCalculate: "Some as despesas fixas do periodo e divida pela receita liquida do mesmo recorte.",
-      sources: sourceSet(mode, ["ERP / centro de custos", "Financeiro / receita liquida"]),
+      formula: "Despesas Fixas / Receita (%) = Total de despesas fixas ÷ Receita Líquida × 100",
+      howToCalculate: "Some as despesas fixas do período e divida pela receita líquida do mesmo recorte.",
+      sources: sourceSet(mode, ["ERP / centro de custos", "Financeiro / receita líquida"]),
       fields: ["fixedCosts", "netRevenue", "competenceDate"],
-      note: "Faixas: P1 (meta) < 45% | P2: 45% a 60% | P3: > 60%.",
+      note: "Faixas de referência: P1 (meta) < 45% | P2: 45% a 60% | P3: > 60%.",
     };
   }
 
   if (key.includes("forecast")) {
     return {
       label,
-      formula: "Forecast de Receita = Numero de consultas confirmadas na agenda x Ticket medio historico por procedimento",
-      howToCalculate: "Conte as consultas confirmadas futuras, aplique o ticket medio historico por procedimento e some o valor projetado.",
-      sources: sourceSet(mode, ["Agenda / CRM", "Financeiro historico por procedimento"]),
+      formula: "Forecast de Receita = Consultas confirmadas na agenda × Ticket médio histórico por procedimento",
+      howToCalculate: "Conte as consultas confirmadas futuras, aplique o ticket médio histórico por procedimento e some o valor projetado.",
+      sources: sourceSet(mode, ["Agenda / CRM", "Financeiro histórico por procedimento"]),
       fields: ["confirmedAppointments", "procedureId", "historicalAvgTicket"],
     };
   }
@@ -233,31 +235,30 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("posicao de caixa") || key.includes("caixa")) {
     return {
       label,
-      formula: "Posicao de Caixa = Saldo atual + entradas previstas - saidas previstas",
-      howToCalculate: "Some o saldo atual com as entradas previstas e desconte as saidas previstas do periodo.",
+      formula: "Posição de Caixa = Saldo atual + Entradas previstas − Saídas previstas",
+      howToCalculate: "Some o saldo atual com as entradas previstas e desconte as saídas previstas do período.",
       sources: sourceSet(mode, ["Tesouraria / ERP / financeiro", "Fluxo de caixa previsto"]),
       fields: ["cashBalance", "projectedInflows", "projectedOutflows", "competenceDate"],
-      note: "Faixas: P1 (meta) sempre positivo | P2: projecao negativa | P3: caixa negativo.",
+      note: "Faixas de referência: P1 (meta) sempre positivo | P2: projeção negativa | P3: caixa negativo.",
     };
   }
 
   if (key.includes("break even") || key.includes("break-even")) {
     return {
       label,
-      formula: "Break-even = Despesas Fixas Totais / Margem de Contribuicao Media (%)",
-      howToCalculate: "Calcule a margem de contribuicao media por atendimento, divida as despesas fixas por essa margem e compare com a receita atual.",
-      sources: sourceSet(mode, ["Financeiro / ERP", "Custos variaveis e ticket medio"]),
+      formula: "Break-even = Despesas Fixas Totais ÷ Margem de Contribuição Média (%)",
+      howToCalculate: "Calcule a margem de contribuição média por atendimento, divida as despesas fixas por essa margem e compare com a receita atual.",
+      sources: sourceSet(mode, ["Financeiro / ERP", "Custos variáveis e ticket médio"]),
       fields: ["fixedCosts", "avgTicket", "variableCosts", "competenceDate"],
-      note: "O PDF expressa a margem de contribuicao em percentual, mas a aplicacao deve converter isso para contribuicao monetaria antes de dividir as despesas fixas.",
     };
   }
 
   if (key.includes("cpl")) {
     return {
       label,
-      formula: "CPL = Total gasto no canal / Leads gerados no periodo",
-      howToCalculate: "Some o investimento do canal no periodo e divida pelo numero de leads gerados pelo mesmo canal.",
-      sources: sourceSet(mode, ["Meta Ads / Google Ads", "CRM / captacao por canal"]),
+      formula: "CPL = Total investido no canal ÷ Leads gerados no período",
+      howToCalculate: "Some o investimento do canal no período e divida pelo número de leads gerados pelo mesmo canal.",
+      sources: sourceSet(mode, ["Meta Ads / Google Ads", "CRM / captação por canal"]),
       fields: ["channel", "adSpend", "leadId", "createdAt"],
     };
   }
@@ -265,9 +266,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("conversao") && key.includes("consulta")) {
     return {
       label,
-      formula: "Conversao Lead -> Consulta Realizada = Consultas realizadas / Total de leads x 100",
-      howToCalculate: "Conte as consultas efetivamente realizadas oriundas de leads do periodo e divida pelo total de leads.",
-      sources: sourceSet(mode, ["CRM / agenda", "Historico do funil"]),
+      formula: "Conversão Lead → Consulta Realizada (%) = Consultas realizadas ÷ Total de leads × 100",
+      howToCalculate: "Conte as consultas efetivamente realizadas originadas de leads do período e divida pelo total de leads.",
+      sources: sourceSet(mode, ["CRM / agenda", "Histórico do funil"]),
       fields: ["leadId", "status", "performedAt", "channel"],
     };
   }
@@ -275,9 +276,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("conversao") && key.includes("agendamento")) {
     return {
       label,
-      formula: "Conversao Lead -> Agendamento = Agendamentos confirmados / Total de leads x 100",
-      howToCalculate: "Conte os agendamentos confirmados do periodo e divida pelo total de leads gerados no mesmo recorte.",
-      sources: sourceSet(mode, ["CRM / agenda", "Historico do funil"]),
+      formula: "Conversão Lead → Agendamento (%) = Agendamentos confirmados ÷ Total de leads × 100",
+      howToCalculate: "Conte os agendamentos confirmados do período e divida pelo total de leads gerados no mesmo recorte.",
+      sources: sourceSet(mode, ["CRM / agenda", "Histórico do funil"]),
       fields: ["leadId", "confirmedAt", "channel"],
     };
   }
@@ -285,9 +286,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("cac")) {
     return {
       label,
-      formula: "CAC = Gasto no canal / Novos pacientes originados do canal no periodo",
-      howToCalculate: "Some o investimento do canal no periodo e divida pelo total de novos pacientes convertidos e atribuidos ao mesmo canal.",
-      sources: sourceSet(mode, ["Meta Ads / Google Ads / CRM", "Kommo / funil comercial / conversoes"]),
+      formula: "CAC = Investimento no canal ÷ Novos pacientes originados do canal no período",
+      howToCalculate: "Some o investimento do canal no período e divida pelo total de novos pacientes convertidos e atribuídos ao mesmo canal.",
+      sources: sourceSet(mode, ["Meta Ads / Google Ads / CRM", "Kommo / funil comercial / conversões"]),
       fields: ["adSpend", "customerId", "convertedAt", "channel"],
     };
   }
@@ -295,9 +296,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("ltv") && key.includes("cac")) {
     return {
       label,
-      formula: "LTV / CAC = LTV / CAC, onde LTV = Ticket Medio x Frequencia de retorno x Meses de retencao",
-      howToCalculate: "Calcule o LTV do paciente pela recorrencia media e divida pelo CAC do mesmo recorte ou canal.",
-      sources: sourceSet(mode, ["Financeiro / contratos / recorrencia", "CRM / ads / conversoes"]),
+      formula: "LTV / CAC = LTV ÷ CAC  |  LTV = Ticket Médio × Frequência de retorno × Meses de retenção",
+      howToCalculate: "Calcule o LTV do paciente pela recorrência média e divida pelo CAC do mesmo recorte ou canal.",
+      sources: sourceSet(mode, ["Financeiro / contratos / recorrência", "CRM / ads / conversões"]),
       fields: ["avgTicket", "returnFrequency", "retentionMonths", "cac", "channel"],
     };
   }
@@ -305,9 +306,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("ltv")) {
     return {
       label,
-      formula: "LTV = Ticket Medio x Frequencia de retorno x Meses de retencao",
-      howToCalculate: "Calcule o ticket medio da base, estime a frequencia de retorno e multiplique pelo tempo medio de retencao.",
-      sources: sourceSet(mode, ["Financeiro / contratos / historico de recorrencia", "CRM / agenda / renovacoes"]),
+      formula: "LTV = Ticket Médio × Frequência de retorno × Meses de retenção",
+      howToCalculate: "Calcule o ticket médio da base, estime a frequência de retorno e multiplique pelo tempo médio de retenção.",
+      sources: sourceSet(mode, ["Financeiro / contratos / histórico de recorrência", "CRM / agenda / renovações"]),
       fields: ["avgTicket", "returnFrequency", "retentionMonths", "customerId"],
     };
   }
@@ -315,9 +316,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("roi")) {
     return {
       label,
-      formula: "ROI = (Receita atribuida ao canal - Gasto no canal) / Gasto x 100",
-      howToCalculate: "Atribua a receita ao canal correto, subtraia o gasto daquele canal e divida pelo investimento.",
-      sources: sourceSet(mode, ["Meta Ads / Google Ads / Analytics", "CRM / financeiro com atribuicao por canal"]),
+      formula: "ROI (%) = (Receita atribuída ao canal − Investimento no canal) ÷ Investimento × 100",
+      howToCalculate: "Atribua a receita ao canal correto, subtraia o investimento daquele canal e divida pelo valor investido.",
+      sources: sourceSet(mode, ["Meta Ads / Google Ads / Analytics", "CRM / financeiro com atribuição por canal"]),
       fields: ["attributedRevenue", "investment", "utmSource", "channel"],
     };
   }
@@ -325,9 +326,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("leads")) {
     return {
       label,
-      formula: "Leads = Volume total de leads por canal no periodo",
-      howToCalculate: "Conte os leads qualificados do periodo, agrupando por canal quando o card exigir segmentacao.",
-      sources: sourceSet(mode, ["Kommo / CRM / captacao", "Historico de interacoes"]),
+      formula: "Leads = Volume total de leads qualificados por canal no período",
+      howToCalculate: "Conte os leads qualificados do período, agrupando por canal quando o card exigir segmentação.",
+      sources: sourceSet(mode, ["Kommo / CRM / captação", "Histórico de interações"]),
       fields: ["leadId", "createdAt", "qualified", "channel"],
     };
   }
@@ -335,9 +336,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("retorno") || key.includes("fidelizacao") || key.includes("recorrencia")) {
     return {
       label,
-      formula: "Retorno / Fidelizacao = Pacientes que retornam em ate 90 dias apos a 1a consulta / Base elegivel x 100",
-      howToCalculate: "Defina a base elegivel da primeira consulta e divida os pacientes que retornaram em ate 90 dias pelo total elegivel.",
-      sources: sourceSet(mode, ["CRM / agenda", "Historico do paciente"]),
+      formula: "Taxa de Retorno (%) = Pacientes que retornam em até N dias após a 1ª consulta ÷ Base elegível × 100",
+      howToCalculate: "Defina a base elegível da primeira consulta e divida os pacientes que retornaram no período pelo total elegível.",
+      sources: sourceSet(mode, ["CRM / agenda", "Histórico do paciente"]),
       fields: ["customerId", "firstAppointmentAt", "returnAppointmentAt", "professionalId"],
     };
   }
@@ -345,9 +346,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("sla de resposta ao lead")) {
     return {
       label,
-      formula: "SLA de Resposta ao Lead = Tempo medio entre 1o contato do lead e resposta da recepcao",
-      howToCalculate: "Subtraia o timestamp do primeiro contato do timestamp da primeira resposta valida e consolide a media do periodo.",
-      sources: sourceSet(mode, ["Kommo / CRM / WhatsApp / recepcao", "Historico de interacoes"]),
+      formula: "SLA de Resposta ao Lead = Tempo médio entre o 1º contato do lead e a resposta da recepção",
+      howToCalculate: "Subtraia o timestamp do primeiro contato do timestamp da primeira resposta válida e consolide a média do período.",
+      sources: sourceSet(mode, ["Kommo / CRM / WhatsApp / recepção", "Histórico de interações"]),
       fields: ["leadId", "createdAt", "firstResponseAt", "channel"],
     };
   }
@@ -355,9 +356,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   if (key.includes("espera")) {
     return {
       label,
-      formula: "Tempo Medio de Espera = Hora de atendimento real - Hora agendada (media do periodo)",
-      howToCalculate: "Subtraia a hora agendada da hora real de atendimento em cada consulta e calcule a media do periodo.",
-      sources: sourceSet(mode, ["Agenda / recepcao", "Logs operacionais com timestamp"]),
+      formula: "Tempo Médio de Espera = Hora de atendimento real − Hora agendada (média do período)",
+      howToCalculate: "Subtraia a hora agendada da hora real de atendimento em cada consulta e calcule a média do período.",
+      sources: sourceSet(mode, ["Agenda / recepção", "Logs operacionais com timestamp"]),
       fields: ["scheduledAt", "startedAt", "professionalId", "unit"],
     };
   }
@@ -366,12 +367,12 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
     return {
       label,
       formula: key.includes("valuation")
-        ? "Valuation = EBITDA normalizado x multiplo ajustado"
+        ? "Valuation = EBITDA normalizado × Múltiplo ajustado"
         : key.includes("payback")
-          ? "Payback = Investimento / EBITDA alvo"
-          : "Multiplo estimado = multiplo base + ajustes dinamicos",
-      howToCalculate: "Normalize o EBITDA LTM, aplique ajustes de risco e crescimento e calcule os cenarios de valuation e payback.",
-      sources: sourceSet(mode, ["Financeiro consolidado / DRE / rede multi-unidade", "Camada analitica de valuation do Control Tower"]),
+          ? "Payback = Investimento ÷ EBITDA-alvo"
+          : "Múltiplo estimado = Múltiplo base + Ajustes dinâmicos de risco e crescimento",
+      howToCalculate: "Normalize o EBITDA LTM, aplique ajustes de risco e crescimento, e calcule os cenários de valuation e payback.",
+      sources: sourceSet(mode, ["Financeiro consolidado / DRE / rede multi-unidade", "Camada analítica de valuation do Control Tower"]),
       fields: ["ebitdaLtm", "normalizedEbitda", "adjustedMultiple", "targetInvestment", "synergy"],
     };
   }
@@ -379,10 +380,9 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
   return {
     label,
     formula: "Indicador calculado a partir do recorte atual do dashboard",
-    howToCalculate: "Aplique os filtros ativos do dashboard, identifique a base do indicador e consolide o valor segundo a regra de negocio definida para o modulo.",
-    sources: sourceSet(mode, ["Control Tower / integracoes conectadas ao cliente"]),
+    howToCalculate: "Aplique os filtros ativos, identifique a base do indicador e consolide o valor segundo a regra de negócio definida para o módulo.",
+    sources: sourceSet(mode, ["Control Tower / integrações conectadas ao cliente"]),
     fields: ["period", "unit", "channel", "professionalId"],
-    note: "Esse KPI ainda nao possui regra especifica mapeada no catalogo visual. O card continua exibindo a origem operacional ativa do dashboard.",
   };
 }
 

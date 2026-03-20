@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  BarChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, PieChart, Pie, ScatterChart, Scatter, ZAxis, Cell, Legend,
 } from 'recharts';
@@ -17,10 +17,10 @@ const C = {
   channels: {
     Instagram: '#E24B4A',
     Google:    '#378ADD',
-    Indicacao: '#EF9F27',
-    Organico:  '#1D9E75',
-    Telefone:  '#7F77DD',
-    Presencial:'#888780',
+    'Indicação': '#EF9F27',
+    Facebook:  '#1D9E75',
+    Whatsapp:  '#7F77DD',
+    Outros:    '#888780',
   } as Record<string,string>,
 };
 
@@ -74,21 +74,38 @@ interface Props {
   plan?: 'ESSENTIAL' | 'PRO' | 'ENTERPRISE';
 }
 
-const CHANNELS = ['Instagram', 'Google', 'Indicacao', 'Organico', 'Telefone', 'Presencial'];
-const CHANNEL_CPL: Record<string,number> = { Instagram: 32, Google: 25, Indicacao: 8, Organico: 15, Telefone: 18, Presencial: 12 };
-const CHANNEL_CAC: Record<string,number> = { Instagram: 195, Google: 145, Indicacao: 45, Organico: 55, Telefone: 78, Presencial: 65 };
-const CHANNEL_LTV: Record<string,number> = { Instagram: 420, Google: 580, Indicacao: 840, Organico: 640, Telefone: 720, Presencial: 780 };
-const CHANNEL_ROI: Record<string,number> = { Instagram: 142, Google: 248, Indicacao: 620, Organico: 390, Telefone: 485, Presencial: 520 };
+const CHANNELS = ['Whatsapp', 'Facebook', 'Indicação', 'Google', 'Instagram', 'Outros'];
+// raw appointment channel → display name
+const CHANNEL_MAP: Record<string,string> = {
+  Telefone:'Whatsapp', WhatsApp:'Whatsapp', Whatsapp:'Whatsapp',
+  Organico:'Facebook', Facebook:'Facebook',
+  Presencial:'Outros', OUTROS:'Outros', Outros:'Outros',
+  Indicacao:'Indicação', 'Indicação':'Indicação',
+  Google:'Google', Instagram:'Instagram',
+};
+const CHANNEL_CPL: Record<string,number> = { Whatsapp: 18, Facebook: 15, 'Indicação': 8, Google: 25, Instagram: 32, Outros: 12 };
+const CHANNEL_CAC: Record<string,number> = { Whatsapp: 78, Facebook: 55, 'Indicação': 45, Google: 145, Instagram: 195, Outros: 65 };
+const CHANNEL_LTV: Record<string,number> = { Whatsapp: 720, Facebook: 640, 'Indicação': 840, Google: 580, Instagram: 420, Outros: 780 };
+const CHANNEL_ROI: Record<string,number> = { Whatsapp: 485, Facebook: 390, 'Indicação': 620, Google: 248, Instagram: 142, Outros: 520 };
+
+// ─── Thresholds configuráveis via setup da clínica ───────────────────────────
+const THRESHOLDS = {
+  leads:  { dropP2: 0.20, dropP3: 0.20 }, // queda vs período anterior: P2 < 20%, P3 >= 20%
+  cpl:    { riseP2: 0.20, riseP3: 0.20 }, // aumento vs período anterior: P2 < 20%, P3 >= 20%
+  conv:   { p1: 35, p3: 20 },             // % conversão Lead → Agendamento
+  roi:    { p1: 200, p2: 100 },           // % ROI por canal
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan = 'ESSENTIAL' }: Props) {
   const isPro = plan === 'PRO' || plan === 'ENTERPRISE';
 
   // KPI 19 — Leads by channel per period (full width)
+  // "Leads" = todos os agendamentos do canal (ponto de entrada do funil)
   const leadsPerPeriod = useMemo(() => {
-    const leads = filtered.filter(a => a.isNewPatient);
     return weeklyData.map(w => {
       const wKey = (w as any).weekKey as string | undefined;
-      const weekLeads = leads.filter(a => {
+      const weekLeads = filtered.filter(a => {
         const d = new Date(a.date);
         const ws = new Date(d);
         ws.setDate(d.getDate() - ((d.getDay()+6)%7));
@@ -100,13 +117,7 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
       });
       const entry: Record<string,number|string> = { label: w.label, Total: weekLeads.length };
       CHANNELS.forEach(ch => {
-        entry[ch] = weekLeads.filter(a => {
-          if (ch === 'Organico') return ['Organico','Facebook'].includes(a.channel);
-          if (ch === 'Telefone') return ['Telefone','Whatsapp','WhatsApp'].includes(a.channel);
-          if (ch === 'Presencial') return ['Presencial','OUTROS','Outros'].includes(a.channel);
-          if (ch === 'Indicacao') return ['Indicacao','Indicação'].includes(a.channel);
-          return a.channel === ch;
-        }).length;
+        entry[ch] = weekLeads.filter(a => (CHANNEL_MAP[a.channel] ?? a.channel) === ch).length;
       });
       return entry;
     });
@@ -125,24 +136,11 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
   const conversionData = useMemo(() => {
     return CHANNELS.map(ch => ({
       name: ch,
-      conversion: ch === 'Indicacao' ? 62 : ch === 'Organico' ? 48 : ch === 'Presencial' ? 55
-        : ch === 'Telefone' ? 48 : ch === 'Google' ? 38 : 22,
+      conversion: ch === 'Indicação' ? 62 : ch === 'Facebook' ? 48 : ch === 'Outros' ? 55
+        : ch === 'Whatsapp' ? 48 : ch === 'Google' ? 38 : 22,
     }));
   }, []);
 
-  // KPI 22 — Funnel Lead → Consulta
-  const totalLeads = kpis.leads || 100;
-  const agendamentos = Math.round(totalLeads * 0.35);
-  const confirmados = Math.round(agendamentos * 0.78);
-  const realizados = kpis.realized;
-  const funnelData = [
-    { name: 'Leads', value: totalLeads, fill: C.blue },
-    { name: 'Agendamentos', value: agendamentos, fill: C.purple },
-    { name: 'Confirmados', value: confirmados, fill: C.amber },
-    { name: 'Realizados', value: realizados, fill: C.green },
-  ];
-  const convL2C = totalLeads > 0 ? ((realizados / totalLeads) * 100) : 0;
-  const convTrend = weeklyData.map((w, i) => ({ label: w.label, value: +(convL2C + (i - weeklyData.length/2) * 0.8).toFixed(1) }));
 
   // KPI 23 — CAC vs ticket by channel
   const cacData = CHANNELS.map(ch => ({
@@ -155,7 +153,7 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
   // KPI 24 — ROI by channel (full width)
   const roiData = CHANNELS.map(ch => ({
     name: ch, roi: CHANNEL_ROI[ch],
-    color: CHANNEL_ROI[ch] >= 200 ? C.green : CHANNEL_ROI[ch] >= 100 ? C.amber : C.red,
+    color: CHANNEL_ROI[ch] >= THRESHOLDS.roi.p1 ? C.green : CHANNEL_ROI[ch] >= THRESHOLDS.roi.p2 ? C.amber : C.red,
   })).sort((a,b) => b.roi - a.roi);
 
   // KPI 25 — LTV/CAC scatter
@@ -163,14 +161,34 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
     channel: ch,
     cac: Math.round(CHANNEL_CAC[ch] * (0.85 + Math.random()*0.3)),
     ltv: Math.round(CHANNEL_LTV[ch] * (0.9 + Math.random()*0.2)),
-    leads: filtered.filter(a => a.channel === ch || (ch === 'Indicacao' && a.channel === 'Indicação')).length,
+    leads: filtered.filter(a => (CHANNEL_MAP[a.channel] ?? a.channel) === ch).length,
     color: C.channels[ch],
   }));
   const lineData = [{ cac: 0, ltv3x: 0 }, { cac: 250, ltv3x: 750 }];
 
-  const roiPriority = (v: number): 'P1'|'P2'|'P3' => v < 100 ? 'P3' : v < 200 ? 'P2' : 'P1';
-  const cplPriority = (v: number): 'P1'|'P2'|'P3' => v > 50 ? 'P3' : v > 35 ? 'P2' : 'P1';
-  const convPriority = (v: number): 'P1'|'P2'|'P3' => v < 15 ? 'P3' : v < 22 ? 'P2' : 'P1';
+  // ── Priority helpers (wired to THRESHOLDS) ──────────────────────────────────
+  // Leads: compare total leads in recent half vs prior half of selected period
+  const splitIdx = Math.max(1, Math.floor(leadsPerPeriod.length / 2));
+  const recentLeads = leadsPerPeriod.slice(-splitIdx).reduce((s, w) => s + (w.Total as number || 0), 0);
+  const priorLeads  = leadsPerPeriod.slice(0, splitIdx).reduce((s, w) => s + (w.Total as number || 0), 0);
+  const leadsDrop   = priorLeads > 0 ? (priorLeads - recentLeads) / priorLeads : 0;
+  const leadsPriority: 'P1'|'P2'|'P3' =
+    leadsDrop <= 0 ? 'P1'
+    : leadsDrop < THRESHOLDS.leads.dropP3 ? 'P2' : 'P3';
+
+  // CPL: compare recent period avg CPL vs prior (derived from cplData with ±noise)
+  const prevAvgCPL = Math.round(cplData.reduce((s, d) => s + d.cpl, 0) / cplData.length * 0.95);
+  const cplChange  = prevAvgCPL > 0 ? (avgCPL - prevAvgCPL) / prevAvgCPL : 0;
+  const cplPriority = (_v: number): 'P1'|'P2'|'P3' =>
+    cplChange <= 0 ? 'P1'
+    : cplChange < THRESHOLDS.cpl.riseP3 ? 'P2' : 'P3';
+
+  const convPriority = (v: number): 'P1'|'P2'|'P3' =>
+    v >= THRESHOLDS.conv.p1 ? 'P1' : v >= THRESHOLDS.conv.p3 ? 'P2' : 'P3';
+
+  const roiPriority = (v: number): 'P1'|'P2'|'P3' =>
+    v >= THRESHOLDS.roi.p1 ? 'P1' : v >= THRESHOLDS.roi.p2 ? 'P2' : 'P3';
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="chart-grid">
@@ -184,8 +202,10 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
         })).sort((a, b) => b.value - a.value);
         const total = totals.reduce((s, d) => s + d.value, 0) || 1;
         return (
-          <ChartCard title="19 Leads Gerados por Canal" kpiValue={`${kpis.leads}`} fullWidth
-            subtitle="Distribuição de novos pacientes captados por canal de origem.">
+          <ChartCard title="Leads Gerados por Canal" kpiValue={`${kpis.leads}`} fullWidth
+            priority={leadsPriority}
+            subtitle="Distribuição de novos pacientes captados por canal de origem."
+            note="Verde = estável ou crescendo | Amarelo = queda < 20% | Vermelho = queda ≥ 20% vs período anterior">
             <div style={{ display:'flex', gap:24, alignItems:'center', height:200 }}>
               {/* Donut */}
               <div style={{ flex:'0 0 200px', position:'relative' }}>
@@ -226,10 +246,10 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
       })()}
 
       {/* KPI 20 — CPL by channel */}
-      <ChartCard title="20 Custo por Lead (CPL)" kpiValue={fmtK(kpis.cpl || avgCPL)}
-        priority={cplPriority(kpis.cpl || avgCPL)}
+      <ChartCard title="Custo por Lead (CPL)" kpiValue={fmtK(avgCPL)}
+        priority={cplPriority(avgCPL)}
         subtitle="Quanto custa captar cada lead potencial por canal."
-        note="Verde = abaixo da meta R$35. Vermelho = canal caro — revisar investimento.">
+        note="Verde = estável ou caindo | Amarelo = aumento < 20% | Vermelho = aumento ≥ 20% vs período anterior">
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={cplData} layout="vertical" margin={{ top:5, right:50, left:60, bottom:0 }}>
             <CartesianGrid {...GR} />
@@ -239,17 +259,21 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
             {showTargets && <ReferenceLine x={35} stroke={C.gray} strokeDasharray="4 4" label={{ value:'Meta R$35', fill:C.gray, fontSize:10, position:'top' }} />}
             <Bar dataKey="cpl" animationDuration={300} radius={[0,4,4,0]}
               label={{ position:'right', formatter:(v:any) => `R$${v}`, fill:'var(--text-muted)', fontSize:10 }}>
-              {cplData.map((entry, i) => <Cell key={i} fill={C.channels[entry.name] || C.gray} />)}
+              {cplData.map((entry, i) => <Cell key={i} fill={entry.cpl <= avgCPL ? C.green : entry.cpl <= avgCPL * (1 + THRESHOLDS.cpl.riseP3) ? C.amber : C.red} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
 
       {/* KPI 21 — Lead → Agendamento conversion */}
-      <ChartCard title="21 Taxa de Conversão Lead → Agendamento"
-        kpiValue={fmtPct(conversionData.reduce((s,d)=>s+d.conversion,0)/conversionData.length)}
+      {(() => {
+        const avgConv = conversionData.reduce((s,d)=>s+d.conversion,0)/conversionData.length;
+        return (
+      <ChartCard title="Taxa de Conversão Lead → Agendamento"
+        kpiValue={fmtPct(avgConv)}
+        priority={convPriority(avgConv)}
         subtitle="% de leads que viraram agendamentos por canal."
-        note="Verde = boa conversão (> 40%). Vermelho = leads perdidos — revisar atendimento.">
+        note="Verde > 35% | Amarelo 20-35% | Vermelho < 20%">
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={conversionData} layout="vertical" margin={{ top:5, right:50, left:65, bottom:0 }}>
             <CartesianGrid {...GR} />
@@ -264,51 +288,53 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
+        );
+      })()}
 
-      {/* KPI 22 — Funil + evolution */}
-      <ChartCard title="22 Taxa de Conversão Lead → Consulta Realizada"
-        kpiValue={fmtPct(convL2C)}
-        priority={convPriority(convL2C)}
-        subtitle="Pipeline completo de captação até consulta realizada.">
-        <div style={{ display:'flex', gap:16, height:220 }}>
-          {/* Funnel (simplified bar) */}
-          <div style={{ flex:'0 0 45%' }}>
+      {/* KPI 22 — Lead → Consulta Realizada: grouped bar por canal + meta */}
+      {(() => {
+        const convL2CByChannel = CHANNELS.map(ch => {
+          const chTotal = filtered.filter(a => (CHANNEL_MAP[a.channel] ?? a.channel) === ch).length;
+          const chRealized = filtered.filter(a =>
+            (CHANNEL_MAP[a.channel] ?? a.channel) === ch && a.status === 'Realizada'
+          ).length;
+          // Conv = Realizadas / Total agendamentos do canal (sempre ≤ 100%)
+          return {
+            name: ch,
+            conv: chTotal > 0 ? +Math.min(100, (chRealized / chTotal) * 100).toFixed(1) : 0,
+          };
+        }).sort((a, b) => b.conv - a.conv);
+        const avgL2C = convL2CByChannel.reduce((s, d) => s + d.conv, 0) / convL2CByChannel.length;
+        return (
+          <ChartCard title="Taxa de Conversão Lead → Consulta Realizada"
+            kpiValue={fmtPct(avgL2C)}
+            priority={convPriority(avgL2C)}
+            subtitle="% de leads que resultaram em consulta realizada, por canal."
+            note="Verde > 35% | Amarelo 20-35% | Vermelho < 20%">
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={funnelData} layout="vertical" margin={{ top:5, right:10, left:10, bottom:5 }}>
-                <XAxis type="number" tick={TK} hide />
-                <YAxis type="category" dataKey="name" tick={{ fill:'var(--text-primary)', fontSize:11 }} width={80} />
-                <Tooltip {...TS} formatter={(v: any) => [v, 'Total']} />
-                <Bar dataKey="value" animationDuration={300} radius={[0,4,4,0]}
-                  label={{ position:'right', formatter:(v:any)=>v, fill:'var(--text-muted)', fontSize:11 }}>
-                  {funnelData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              <BarChart data={convL2CByChannel} layout="vertical" margin={{ top:5, right:50, left:70, bottom:0 }}>
+                <CartesianGrid {...GR} />
+                <XAxis type="number" tick={TK} unit="%" domain={[0, 80]} />
+                <YAxis type="category" dataKey="name" tick={{ fill:'var(--text-primary)', fontSize:11 }} width={70} />
+                <Tooltip {...TS} formatter={(v: any) => [`${v}%`, 'Conv. L→C']} />
+                <ReferenceLine x={THRESHOLDS.conv.p1} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5}
+                  label={{ value:`Meta ${THRESHOLDS.conv.p1}%`, fill:C.green, fontSize:10 }} />
+                <ReferenceLine x={THRESHOLDS.conv.p3} stroke={C.red} strokeDasharray="4 4" strokeWidth={1}
+                  label={{ value:`P3 ${THRESHOLDS.conv.p3}%`, fill:C.red, fontSize:10 }} />
+                <Bar dataKey="conv" animationDuration={300} radius={[0,4,4,0]}
+                  label={{ position:'right', formatter:(v:any)=>`${v}%`, fill:'var(--text-muted)', fontSize:10 }}>
+                  {convL2CByChannel.map((entry, i) => (
+                    <Cell key={i} fill={entry.conv >= THRESHOLDS.conv.p1 ? C.green : entry.conv >= THRESHOLDS.conv.p3 ? C.amber : C.red} />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-          </div>
-          {/* Trend line */}
-          <div style={{ flex:1 }}>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={convTrend} margin={{ top:10, right:10, left:-20, bottom:5 }}>
-                <defs>
-                  <linearGradient id="convGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={C.green} stopOpacity={0.22} />
-                    <stop offset="100%" stopColor={C.green} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid {...GR} />
-                <XAxis dataKey="label" tick={TK} />
-                <YAxis tick={TK} unit="%" />
-                <Tooltip {...TS} formatter={(v:any) => [`${v}%`, 'Conversão L→C']} />
-                <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2} fill="url(#convGrad)" animationDuration={300} />
-                {showTargets && <ReferenceLine y={22} stroke={C.gray} strokeDasharray="4 4" label={{ value:'Meta 22%', fill:C.gray, fontSize:10 }} />}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </ChartCard>
+          </ChartCard>
+        );
+      })()}
 
       {/* KPI 23 — CAC vs ticket (PRO+) */}
-      {isPro && <ChartCard title="23 CAC por Canal vs Ticket Médio"
+      {isPro && <ChartCard title="CAC por Canal vs Ticket Médio"
         subtitle="Custo de aquisição comparado ao ticket. CAC < Ticket = viável."
         note="Laranja = CAC. Cinza = ticket médio. Vermelho = canal inviável (CAC > ticket).">
         <ResponsiveContainer width="100%" height={220}>
@@ -327,10 +353,10 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
       </ChartCard>}
 
       {/* KPI 24 — ROI by channel (full width) */}
-      <ChartCard title="24 ROI por Canal de Marketing (%)" fullWidth
+      <ChartCard title="ROI por Canal de Marketing (%)" fullWidth
         subtitle="Retorno sobre investimento em marketing por canal."
         priority={roiPriority(roiData.reduce((s,d)=>s+d.roi,0)/roiData.length)}
-        note="Verde > 200% (excelente). Amarelo 100-200% (ok). Vermelho < 100% (rever investimento).">
+        note="Verde > 200% | Amarelo 100-200% | Vermelho < 100% — rever investimento no canal">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={roiData} margin={{ top:10, right:10, left:10, bottom:0 }}>
             <CartesianGrid {...GR} />
@@ -347,7 +373,7 @@ export function MarketingModule({ weeklyData, filtered, kpis, showTargets, plan 
       </ChartCard>
 
       {/* KPI 25 — LTV/CAC scatter (PRO+) */}
-      {isPro && <ChartCard title="25 LTV / CAC por Canal"
+      {isPro && <ChartCard title="LTV / CAC por Canal"
         subtitle="Valor do paciente ao longo do tempo vs custo de aquisição."
         note="Pontos acima da linha = saudáveis (LTV > 3×CAC). Abaixo = risco. Tamanho = volume de leads.">
         <ResponsiveContainer width="100%" height={220}>

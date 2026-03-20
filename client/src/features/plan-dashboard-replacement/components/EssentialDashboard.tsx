@@ -1,7 +1,5 @@
 import { useMemo, useCallback, memo } from 'react';
-import ReactApexChart from 'react-apexcharts';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { getChartTheme } from '../utils/chartOptions';
 import FilterBar from './FilterBar';
 import IntegrationSection from './IntegrationSection';
 import { useTranslation } from '../i18n';
@@ -42,13 +40,6 @@ interface Props {
 
 type Priority = 'P1' | 'P2' | 'P3' | 'OK';
 
-function movingAverage(values: number[], window = 3) {
-  return values.map((_, idx) => {
-    const start = Math.max(0, idx - window + 1);
-    const slice = values.slice(start, idx + 1);
-    return slice.reduce((s, v) => s + v, 0) / (slice.length || 1);
-  });
-}
 
 function toWeekKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -67,11 +58,6 @@ function monthLabel(key: string) {
   return _agendaMonthNames[m] ?? key;
 }
 
-function badgeForPriority(priority: Priority) {
-  if (priority === 'P3') return { label: 'Crítico', className: 'red' };
-  if (priority === 'P2') return { label: 'Alerta', className: 'yellow' };
-  return { label: 'Bom', className: 'green' };
-}
 
 function renderMoneyValueWithSmallSymbol(value: string) {
   const hasLeadingMinus = /^-+\s*/.test(value);
@@ -94,11 +80,10 @@ function renderPercentValueWithSmallSymbol(value: number, fractionDigits = 1) {
   );
 }
 
-function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersChange, lang = "PT", appointments, integrationHealth }: Props) {
+function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments, integrationHealth }: Props) {
   const { t } = useTranslation();
-  const { formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
+  const { formatCompactMoney, moneyTitle } = useCurrency();
   const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
-  const ct = useMemo(() => getChartTheme(theme, visualScale), [theme, visualScale]);
   const allData = useMemo(() => (appointments && appointments.length > 0) ? appointments : getAllAppointments(), [appointments]);
   const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
@@ -151,8 +136,6 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
         };
       });
   }, [sortedFiltered]);
-  const leadTimeSeries = useMemo(() => agendaWeeks.map(w => +w.leadTimeDays.toFixed(1)), [agendaWeeks]);
-  const leadTimeAvgSeries = useMemo(() => movingAverage(leadTimeSeries, 3).map(v => +v.toFixed(1)), [leadTimeSeries]);
   const channelStatusBreakdown = useMemo(() => byChannel.filter(c => c.total > 0), [byChannel]);
   const channelDropStats = useMemo(() => {
     if (agendaWeeks.length === 0) return [] as { name: string; dropPct: number; total: number }[];
@@ -241,14 +224,6 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
   }, [weeklyTrend]);
   const financeCurrent = financeWeeks[financeWeeks.length - 1];
   const financePrev = financeWeeks[financeWeeks.length - 2];
-  const grossRevenueTrendSeries = useMemo(
-    () => financeWeeks.map((week) => Math.round(week.gross)),
-    [financeWeeks],
-  );
-  const grossRevenueTrendCategories = useMemo(
-    () => financeWeeks.map((week) => week.label),
-    [financeWeeks],
-  );
   const financeRules = useMemo(() => {
     const current = financeCurrent;
     if (!current) return [];
@@ -290,7 +265,6 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
   const delinquencyColor = delinquencyCurrent > 8 ? 'var(--red)' : delinquencyCurrent >= 4 ? 'var(--yellow)' : 'var(--green)';
   const fixedExpenseRatioColor = fixedExpenseRatioCurrent > 60 ? 'var(--red)' : fixedExpenseRatioCurrent >= 45 ? 'var(--yellow)' : 'var(--green)';
   const cashPositionColor = cashCurrentValue < 0 ? 'var(--red)' : cashProjectedValue < 0 ? 'var(--yellow)' : 'var(--green)';
-  const cashProjectionColor = cashProjectedValue < 0 ? 'var(--yellow)' : 'var(--green)';
   const marketingWeeks = useMemo(() => {
     return weeklyTrend.map((w, idx) => {
       const leads = Math.max(1, w.leads);
@@ -345,16 +319,23 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
     const noShowPriority: Priority = (worstNoShowChannel.noShowRateChannel ?? 0) > 35 ? 'P3' : (worstNoShowChannel.noShowRateChannel ?? 0) > 25 ? 'P2' : 'P1';
     const cplWorsened = marketingPrev ? (((current.cpl - marketingPrev.cpl) / Math.max(marketingPrev.cpl, 1)) * 100) > 20 && current.conversion <= (marketingPrev.conversion ?? current.conversion) : false;
     const cplPriority: Priority = cplWorsened ? 'P2' : 'P1';
+    const channelFilterLabel: Record<string, string> = { Whatsapp: 'Whatsapp', Facebook: 'Facebook', OUTROS: 'Outros', Indicacao: 'Indicação' };
     const roiWorst = marketingByChannel.reduce((acc, c) => c.roi < acc.roi ? c : acc, marketingByChannel[0] ?? { name: '-', roi: 0 });
-    const roiPriority: Priority = (roiWorst.roi ?? 0) < 0 ? 'P3' : 'P1';
+    const selectedChannelRoi = filters.channel
+      ? (marketingByChannel.find(c => c.name === filters.channel) ?? roiWorst)
+      : roiWorst;
+    const roiChannelLabel = filters.channel
+      ? (channelFilterLabel[filters.channel] ?? filters.channel)
+      : ((selectedChannelRoi as any).name ?? '-');
+    const roiPriority: Priority = (selectedChannelRoi.roi ?? 0) < 0 ? 'P3' : 'P1';
     return [
       { id:'01', kpi:'Leads Gerados / Semana', value:String(current.leads), meta:String(current.leadMeta), baseN:String(current.leads), priority:leadsPriority, action:'Comparar semana anterior e alertar tendência' },
       { id:'02', kpi:'Conversão Lead → Agendamento (%)', value:`${current.conversion.toFixed(1)}%`, meta:'> 30%', baseN:String(current.leads), priority:conversionPriority, action:'Separar funil por canal (script quebrando)' },
       { id:'03', kpi:'No-Show por Canal de Origem (%)', value:`${(worstNoShowChannel.noShowRateChannel ?? 0).toFixed(1)}% (${(worstNoShowChannel as any).name ?? '-'})`, meta:'< média geral', baseN:String((worstNoShowChannel as any).total ?? 0), priority:noShowPriority, action:'Atacar canal com no-show acima da média' },
       { id:'04', kpi:moneyTitle('CPL'), value:fmt(current.cpl), meta:fmt(140), baseN:String(current.leads), priority:cplPriority, action:'Integrar Meta/Google Ads e revisar criativos' },
-      { id:'05', kpi:'ROI por Canal (%)', value:`${(roiWorst.roi ?? 0).toFixed(0)}% (${(roiWorst as any).name ?? '-'})`, meta:'> 200%', baseN:fmt((roiWorst as any).attributedRevenue ?? 0), priority:roiPriority, action:'Suspender canal com ROI negativo' },
+      { id:'05', kpi:'ROI por Canal (%)', value:`${(selectedChannelRoi.roi ?? 0).toFixed(0)}% (${roiChannelLabel})`, meta:'> 200%', baseN:fmt((selectedChannelRoi as any).attributedRevenue ?? 0), priority:roiPriority, action:'Suspender canal com ROI negativo' },
     ];
-  }, [marketingCurrent, marketingPrev, marketingByChannel, fmt, moneyTitle]);
+  }, [marketingCurrent, marketingPrev, marketingByChannel, filters.channel, fmt, moneyTitle]);
   const opsWeeks = useMemo(() => {
     return weeklyTrend.map((w, idx) => {
       const nps = w.avgNPS;
@@ -378,14 +359,10 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
   }, [weeklyTrend]);
   const opsCurrent = opsWeeks[opsWeeks.length - 1];
   const npsGaugeValue = +(opsCurrent?.nps ?? kpis.avgNPS).toFixed(1);
-  const slaByReception = useMemo(() => {
-    const base = opsCurrent?.slaLeadHours ?? 1.2;
-    return [
-      { name: 'Recepção A', sla: +(base * 0.85).toFixed(2) },
-      { name: 'Recepção B', sla: +(base * 1.35).toFixed(2) },
-      { name: 'Recepção C', sla: +(base * 0.95).toFixed(2) },
-    ];
-  }, [opsCurrent]);
+  const periodReturnLabel = useMemo(() => {
+    const map: Record<string, string> = { '7d': '7 Dias', '15d': '15 Dias', '30d': '30 Dias', '3m': '3 Meses', '6m': '6 Meses', '1 ano': '12 Meses' };
+    return map[filters.period] ?? '30 Dias';
+  }, [filters.period]);
   const opsRules = useMemo(() => {
     if (!opsCurrent) return [];
     const npsPriority: Priority = opsCurrent.nps < 7.5 ? 'P3' : opsCurrent.nps < 8.5 ? 'P2' : 'P1';
@@ -395,19 +372,10 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
     return [
       { id:'01', kpi:'NPS Geral (0-10)', value: opsCurrent.nps.toFixed(1), meta:'> 8,5', baseN:String(opsCurrent.npsResponses), priority:npsPriority, action:'Coleta automática WhatsApp pós-consulta' },
       { id:'02', kpi:'Tempo Médio de Espera (min)', value: `${opsCurrent.waitMinutes.toFixed(0)} min`, meta:'< 12 min', baseN:String(kpis.realized), priority:waitPriority, action:'Rebalancear agenda / encaixes' },
-      { id:'03', kpi:'Taxa de Retorno 90d (%)', value: `${opsCurrent.return90d.toFixed(1)}%`, meta:'> 40%', baseN:String(kpis.realized), priority:returnPriority, action:'Cohort 180d e rotina de recall' },
+      { id:'03', kpi:`Taxa de Retorno ${periodReturnLabel} (%)`, value: `${opsCurrent.return90d.toFixed(1)}%`, meta:'> 40%', baseN:String(kpis.realized), priority:returnPriority, action:'Cohort 180d e rotina de recall' },
       { id:'04', kpi:'SLA de Resposta ao Lead (h)', value: `${opsCurrent.slaLeadHours.toFixed(2)}h`, meta:'< 1h', baseN:String(opsCurrent.leadResponses), priority:slaPriority, action:'SLA por recepção / responsável' },
     ];
-  }, [opsCurrent, kpis.realized]);
-
-  const drillProfessional = useCallback((idx: number) => {
-    const name = byProf[idx]?.name;
-    if (name) onFiltersChange({ ...filters, professional: filters.professional === name ? '' : name });
-  }, [byProf, filters, onFiltersChange]);
-
-  const profClick = useMemo(() => ({
-    chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillProfessional(cfg.dataPointIndex) } },
-  }), [drillProfessional]);
+  }, [opsCurrent, kpis.realized, periodReturnLabel]);
 
   const showFilterBar = activeTab !== 4 && activeTab !== 5;
 
@@ -467,7 +435,7 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
               items: [
                 { rule: opsRules[0], kpiLabel: t('NPS Geral (0–10)'), meta: t('Meta > 8,5 — paciente indicaria você?') },
                 { rule: opsRules[1], kpiLabel: t('Tempo Médio de Espera (min)'), meta: t('Meta < 12 min em sala de espera') },
-                { rule: opsRules[2], kpiLabel: t('Taxa de Retorno 90 dias (%)'), meta: t('Meta > 40% — paciente voltou em 90 dias?') },
+                { rule: opsRules[2], kpiLabel: `${t('Taxa de Retorno')} ${periodReturnLabel} (%)`, meta: `${t('Meta > 40% — paciente voltou em')} ${periodReturnLabel}?` },
                 { rule: opsRules[3], kpiLabel: t('SLA de Resposta ao Lead (h)'), meta: t('Meta < 1h para responder o paciente') },
               ],
             },
@@ -504,9 +472,32 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
         <div className="section-header"><h2><span className="orange-bar" /> {t('Agenda & No-Show')}</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Total Agendamentos</div><div className="overview-card-value">{kpis.total}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Realizadas</div><div className="overview-card-value">{kpis.realized}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">No-Show</div><div className="overview-card-value" style={{color:kpis.noShowRate>10?'var(--yellow)':'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label">Consultas Realizadas</div><div className="overview-card-value">{kpis.realized}</div></div>
+          <div className="overview-card"><div className="overview-card-label">Taxa de Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label">Taxa de No-Show</div><div className="overview-card-value" style={{color:kpis.noShowRate>10?'var(--yellow)':'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label">Taxa de Confirmações</div><div className="overview-card-value" style={{color:kpis.confirmationRate>=85?'var(--green)':kpis.confirmationRate>=70?'var(--yellow)':'var(--red)'}}>{kpis.confirmationRate.toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label">Lead Time do Agendamento</div><div className="overview-card-value" style={{color:kpis.leadTimeDays<=3?'var(--green)':kpis.leadTimeDays<=7?'var(--yellow)':'var(--red)'}}>{kpis.leadTimeDays.toFixed(1)}d</div></div>
+          {(() => {
+            const CHANNEL_DISPLAY: Record<string, string> = {
+              Telefone: 'Whatsapp', WhatsApp: 'Whatsapp', Whatsapp: 'Whatsapp',
+              Organico: 'Facebook', Facebook: 'Facebook',
+              Presencial: 'Outros', OUTROS: 'Outros', Outros: 'Outros',
+              Indicacao: 'Indicação', 'Indicação': 'Indicação',
+              Google: 'Google', Instagram: 'Instagram',
+            };
+            const counts = new Map<string, number>();
+            filtered.forEach(a => {
+              const name = CHANNEL_DISPLAY[a.channel] ?? a.channel;
+              counts.set(name, (counts.get(name) ?? 0) + 1);
+            });
+            const topChannel = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0];
+            return (
+              <div className="overview-card">
+                <div className="overview-card-label">Canal de Aquisição</div>
+                <div className="overview-card-value" style={{fontSize:22,whiteSpace:'nowrap'}}>{topChannel ? `${topChannel[0]} / ${topChannel[1]} agend.` : '—'}</div>
+              </div>
+            );
+          })()}
         </div>
         <AgendaNoShowModule agendaWeeks={agendaWeeks} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="ESSENTIAL" />
       </>)}
@@ -550,7 +541,7 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">NPS Geral</div><div className="overview-card-value" style={{color:npsGaugeValue >= 8 ? 'var(--green)' : 'var(--yellow)'}}>{npsGaugeValue}</div></div>
           <div className="overview-card"><div className="overview-card-label">Espera média</div><div className="overview-card-value">{(opsCurrent?.waitMinutes ?? kpis.avgWait).toFixed(0)} min</div></div>
-          <div className="overview-card"><div className="overview-card-label">Retorno 90d</div><div className="overview-card-value">{(opsCurrent?.return90d ?? kpis.returnRate).toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label">Retorno {periodReturnLabel}</div><div className="overview-card-value">{(opsCurrent?.return90d ?? kpis.returnRate).toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">SLA Lead</div><div className="overview-card-value">{(opsCurrent?.slaLeadHours ?? 0).toFixed(2)}h</div></div>
         </div>
         <OperacaoUXModule opsWeeks={opsWeeks} filtered={filtered} kpis={kpis} byProf={byProf} filters={filters} showTargets={filters.severity !== ''} plan="ESSENTIAL" />
