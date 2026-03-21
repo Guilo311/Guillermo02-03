@@ -404,6 +404,7 @@ export default function Login() {
                           return (
                             <Input
                               placeholder={t.emailPlaceholder}
+                              tabIndex={1}
                               className={cn(
                                 "pl-10 bg-secondary/50 text-white placeholder:text-muted-foreground/50 transition-all duration-200",
                                 focusedField === "email"
@@ -441,6 +442,7 @@ export default function Login() {
                             <Input
                               type={showPassword ? "text" : "password"}
                               placeholder={t.passwordPlaceholder}
+                              tabIndex={2}
                               className={cn(
                                 "pl-10 pr-10 bg-secondary/50 text-white placeholder:text-muted-foreground/50 transition-all duration-200",
                                 focusedField === "password"
@@ -458,6 +460,7 @@ export default function Login() {
                         })()}
                         <button
                           type="button"
+                          tabIndex={-1}
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-3 text-muted-foreground hover:text-white focus:outline-none"
                         >

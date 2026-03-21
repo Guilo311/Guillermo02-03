@@ -20,7 +20,7 @@ export interface Appointment {
   date: string; // YYYY-MM-DD
   weekday: string; // Mon, Tue, ...
   professional: string;
-  channel: string; // Instagram, Google, Indicacao, Organico, Telefone, Presencial
+  channel: string; // Instagram, Google, Indicação, Telefone, Presencial
   unit: string; // Jardins, Paulista
   procedure: string; // Botox, Preenchimento, Laser, Peeling, Limpeza
   status: string; // Realizada, No-Show, Cancelada, Confirmada
@@ -68,7 +68,7 @@ export const defaultFilters: Filters = {
 };
 
 const professionals = ["Dr. Silva", "Dra. Ana", "Dr. Costa"];
-const channels = ["Instagram", "Google", "Indicacao", "Organico", "Telefone", "Presencial"];
+const channels = ["Instagram", "Google", "Indicação", "Telefone", "Presencial"];
 const units = ["Jardins", "Paulista"];
 const procedures = ["Botox", "Preenchimento", "Laser", "Peeling", "Limpeza"];
 const statuses = ["Realizada", "No-Show", "Cancelada", "Confirmada"];
@@ -170,11 +170,9 @@ function generateAppointments(): Appointment[] {
           ? 210
           : channel === "Google"
             ? 245
-            : channel === "Indicacao"
+            : channel === "Indicação"
               ? 85
-              : channel === "Organico"
-                ? 35
-                : channel === "Telefone"
+              : channel === "Telefone"
                   ? 50
                   : 30;
       const cac = cacBase * (0.7 + rng() * 0.6);
@@ -264,18 +262,12 @@ export function applyFilters(data: Appointment[], filters: Filters): Appointment
   filtered = filtered.filter((a) => a.date >= cutoffStr);
 
   if (filters.channel) {
-    if (filters.channel === "OUTROS") {
-      const otherChannelAliases = new Set(["OUTROS", "Outros", "Organico", "Telefone", "Presencial"]);
+    if (filters.channel === "Outros") {
+      const otherChannelAliases = new Set(["Outros", "Telefone", "Presencial"]);
       filtered = filtered.filter((a) => otherChannelAliases.has(a.channel));
-    } else if (filters.channel === "Facebook") {
-      const facebookAliases = new Set(["Facebook", "Organico"]);
-      filtered = filtered.filter((a) => facebookAliases.has(a.channel));
     } else if (filters.channel === "Whatsapp") {
       const whatsappAliases = new Set(["Whatsapp", "WhatsApp", "Telefone"]);
       filtered = filtered.filter((a) => whatsappAliases.has(a.channel));
-    } else if (filters.channel === "Indicacao") {
-      const indicationAliases = new Set(["Indicacao", "Indicação"]);
-      filtered = filtered.filter((a) => indicationAliases.has(a.channel));
     } else {
       filtered = filtered.filter((a) => a.channel === filters.channel);
     }

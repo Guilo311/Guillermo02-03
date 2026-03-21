@@ -78,9 +78,9 @@ const CHANNELS = ['Whatsapp', 'Facebook', 'Indicação', 'Google', 'Instagram', 
 // raw appointment channel → display name
 const CHANNEL_MAP: Record<string,string> = {
   Telefone:'Whatsapp', WhatsApp:'Whatsapp', Whatsapp:'Whatsapp',
-  Organico:'Facebook', Facebook:'Facebook',
-  Presencial:'Outros', OUTROS:'Outros', Outros:'Outros',
-  Indicacao:'Indicação', 'Indicação':'Indicação',
+  Facebook:'Facebook',
+  Presencial:'Outros', Outros:'Outros',
+  'Indicação':'Indicação',
   Google:'Google', Instagram:'Instagram',
 };
 const CHANNEL_CPL: Record<string,number> = { Whatsapp: 18, Facebook: 15, 'Indicação': 8, Google: 25, Instagram: 32, Outros: 12 };

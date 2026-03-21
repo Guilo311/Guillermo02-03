@@ -7,6 +7,19 @@ import {
 import type { Appointment, Filters } from '../../data/mockData';
 import type { WeekBucket, KPISummary } from '../../data/dashboardTypes';
 
+// ─── Limiares P1/P2/P3 — podem ser sobrescritos via setup ────────────────────
+export const AGENDA_THRESHOLDS = {
+  noShow:      { p1: 8,    p3: 15   },   // %  inverted: <p1 ✓ | p1-p3 ⚠ | >p3 ✗
+  occupancy:   { p1: 80,   p3: 65   },   // %  normal:   >p1 ✓ | p3-p1 ⚠ | <p3 ✗
+  confirm:     { p1: 85,   p3: 70   },   // %  normal
+  leadTime:    { p1: 3,    p2: 5,  p3: 7 }, // dias inverted
+  consultPct:  { p2: 80              },   // % da meta: ≥100 P1 | 80-99 P2 | <80 P3
+  channelDrop: { p2: 20,   p3: 35   },   // % queda: <p2 P1 | p2-p3 P2 | >p3 P3
+  noShowCost:  { p1: 2000, p3: 5000 },   // R$/mês inverted
+  lostCap:     { p1: 8,    p3: 15   },   // % inverted
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const C = {
   red:    '#E24B4A', redFill:    'rgba(226,75,74,0.10)',
   amber:  '#EF9F27', amberFill:  'rgba(239,159,39,0.10)',
@@ -153,10 +166,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
       const entry: Record<string, number | string> = { label: w.label };
       channelNames.forEach(ch => {
         entry[ch] = weekRows.filter(r => {
-          if (ch === 'Facebook')  return ['Facebook', 'Organico'].includes(r.channel);
+          if (ch === 'Facebook')  return r.channel === 'Facebook';
           if (ch === 'Whatsapp')  return ['Whatsapp', 'WhatsApp', 'Telefone'].includes(r.channel);
-          if (ch === 'Outros')    return ['Outros', 'OUTROS', 'Presencial'].includes(r.channel);
-          if (ch === 'Indicação') return ['Indicacao', 'Indicação'].includes(r.channel);
+          if (ch === 'Outros')    return ['Outros', 'Presencial'].includes(r.channel);
+          if (ch === 'Indicação') return r.channel === 'Indicação';
           return r.channel === ch;
         }).length;
       });
@@ -164,16 +177,19 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
     });
   }, [agendaWeeks, filtered]);
 
-  // Priority helpers — P1 (verde/meta) | P2 (amarelo/atenção) | P3 (vermelho/crítico)
-  const noShowPriority  = (v: number) => v > 15 ? 'P3' : v >= 8  ? 'P2' : 'P1'; // <8% P1 | 8-15% P2 | >15% P3
-  const occPriority     = (v: number) => v < 65 ? 'P3' : v < 80  ? 'P2' : 'P1'; // >80% P1 | 65-80% P2 | <65% P3
-  const confPriority    = (v: number) => v < 70 ? 'P3' : v < 85  ? 'P2' : 'P1'; // >85% P1 | 70-85% P2 | <70% P3
-  const leadTimePriority = (v: number) => v > 7 ? 'P3' : v >= 3  ? 'P2' : 'P1'; // <3d P1 | 3-7d P2 | >7d P3
+  // Priority helpers — usam AGENDA_THRESHOLDS (configuráveis via setup)
+  const T = AGENDA_THRESHOLDS;
+  const noShowPriority   = (v: number) => v > T.noShow.p3    ? 'P3' : v >= T.noShow.p1    ? 'P2' : 'P1';
+  const occPriority      = (v: number) => v < T.occupancy.p3 ? 'P3' : v < T.occupancy.p1  ? 'P2' : 'P1';
+  const confPriority     = (v: number) => v < T.confirm.p3   ? 'P3' : v < T.confirm.p1    ? 'P2' : 'P1';
+  const leadTimePriority = (v: number) => v > T.leadTime.p3  ? 'P3' : v > T.leadTime.p2   ? 'P2' : 'P1';
+  const noShowCostPriority = (v: number) => v > T.noShowCost.p3 ? 'P3' : v > T.noShowCost.p1 ? 'P2' : 'P1';
+  const lostCapPriority  = (v: number) => v > T.lostCap.p3   ? 'P3' : v >= T.lostCap.p1   ? 'P2' : 'P1';
 
   // Consultas: P1 ≥ 100% da meta | P2 80-99% | P3 < 80%
   const totalTarget = agendaWeeks.reduce((s, w) => s + w.weeklyTarget, 0) || 1;
   const consultPct  = (kpis.realized / totalTarget) * 100;
-  const consultPriority = consultPct >= 100 ? 'P1' : consultPct >= 80 ? 'P2' : 'P3';
+  const consultPriority = consultPct >= 100 ? 'P1' : consultPct >= T.consultPct.p2 ? 'P2' : 'P3';
 
   // Canal: compara última semana vs média das anteriores (queda %)
   const lastWeekTotal = agendaWeeks.length > 0
@@ -183,7 +199,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
     ? agendaWeeks.slice(0, -1).reduce((s, w) => s + w.realized + w.noShows, 0) / (agendaWeeks.length - 1)
     : lastWeekTotal;
   const channelDrop = prevAvgTotal > 0 ? ((prevAvgTotal - lastWeekTotal) / prevAvgTotal) * 100 : 0;
-  const channelPriority = channelDrop > 35 ? 'P3' : channelDrop > 20 ? 'P2' : 'P1';
+  const channelPriority = channelDrop > T.channelDrop.p3 ? 'P3' : channelDrop > T.channelDrop.p2 ? 'P2' : 'P1';
+
+  // Custo mensal de no-show (última semana × 4 semanas estimado)
+  const lastNoShowCost = noShowCostSeries.length ? noShowCostSeries[noShowCostSeries.length - 1].monthlyCost : 0;
 
   const curConf = agendaWeeks.length ? agendaWeeks[agendaWeeks.length - 1].confirmationRate : kpis.confirmationRate;
 
@@ -316,9 +335,11 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
       {/* KPI 5 — No-show cost (PRO+) */}
       {isPro && <ChartCard
         title="Custo Estimado do No-show (R$)"
+        priority={noShowCostPriority(lastNoShowCost) as any}
+        kpiValue={`R$ ${(lastNoShowCost/1000).toFixed(1)}k`}
         subtitle="Custo mensal e acumulado de consultas perdidas"
         fullWidth
-        note="Barras = custo por período. Linha laranja = acumulado total."
+        note={`Verde < R$2k/mês | Amarelo R$2-5k | Vermelho > R$5k/mês`}
       >
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={noShowCostSeries} margin={{ top: 10, right: 40, left: 10, bottom: 0 }}>
@@ -329,6 +350,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
             <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, name: any) => [
               `R$ ${(v as number).toLocaleString('pt-BR')}`, name === 'monthlyCost' ? 'Custo no período' : 'Acumulado'
             ]} />
+            <ReferenceLine yAxisId="left" y={T.noShowCost.p1} stroke={C.green} strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: 'P1 R$2k', position: 'insideTopRight', fill: C.green, fontSize: 10 }} />
+            <ReferenceLine yAxisId="left" y={T.noShowCost.p3} stroke={C.red}   strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: 'P3 R$5k', position: 'insideTopRight', fill: C.red,   fontSize: 10 }} />
             <Bar yAxisId="left" dataKey="monthlyCost" name="monthlyCost" fill={C.red} fillOpacity={0.7} radius={[4, 4, 0, 0]} animationDuration={300} />
             <Line yAxisId="right" type="monotone" dataKey="accumulated" name="accumulated" stroke="#BA7517" strokeWidth={2} dot={{ r: 3 }} animationDuration={300} />
           </ComposedChart>
@@ -338,8 +363,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
       {/* KPI 6 — Capacity loss (PRO+) */}
       {isPro && <ChartCard
         title="Taxa de Perda de Capacidade não Recuperável (%)"
+        priority={lostCapPriority(kpis.noShowRate) as any}
+        kpiValue={`${kpis.noShowRate.toFixed(1)}%`}
         subtitle="No-shows + cancelamentos tardios ÷ total de slots"
-        note="Limite crítico = 8% (PRO). Acima disso há impacto financeiro relevante."
+        note="Verde < 8% | Amarelo 8-15% | Vermelho > 15%"
       >
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={lostCapSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -353,8 +380,11 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
             <XAxis dataKey="label" tick={TICK_STYLE} />
             <YAxis tick={TICK_STYLE} unit="%" domain={[0, 25]} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(v: any) => [`${v}%`, 'Perda']} />
+            <ReferenceLine y={T.lostCap.p1} stroke={C.green} strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: 'P1 8%', position: 'insideTopRight', fill: C.green, fontSize: 10 }} />
+            <ReferenceLine y={T.lostCap.p3} stroke={C.red}   strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: 'P3 15%', position: 'insideTopRight', fill: C.red,   fontSize: 10 }} />
             <Area type="monotone" dataKey="value" stroke={C.red} strokeWidth={2} fill="url(#lcGrad)" animationDuration={300} />
-            {showTargets && <ReferenceLine y={8} stroke={C.gray} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: 'Limite 8%', fill: C.gray, fontSize: 10 }} />}
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>}
@@ -365,13 +395,13 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
         priority={leadTimePriority(kpis.leadTimeDays) as any}
         kpiValue={`${kpis.leadTimeDays.toFixed(1)}d`}
         subtitle="Tempo médio entre o contato e a consulta agendada"
-        note="Verde < 3d | Amarelo 3–7d | Vermelho > 7d"
+        note="Verde < 3d | Amarelo 5-7d | Vermelho > 7d"
       >
         {(() => {
           const MAX = 15;
           const val  = kpis.leadTimeDays;
           const pct  = Math.min(100, (val / MAX) * 100);
-          const color = val < 3 ? C.green : val <= 7 ? C.amber : C.red;
+          const color = val < T.leadTime.p1 ? C.green : val <= T.leadTime.p3 ? C.amber : C.red;
           const labelLeft = Math.max(3, Math.min(93, pct));
           return (
             <div style={{ padding: '32px 4px 4px', position: 'relative' }}>
@@ -386,15 +416,17 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
               {/* Bullet track */}
               <div style={{ position: 'relative', height: 32, borderRadius: 8 }}>
-                {/* Colored zones */}
+                {/* Colored zones: P1 green 0-3d | transitional light 3-5d | P2 amber 5-7d | P3 red 7d+ */}
                 <div style={{ display: 'flex', height: '100%', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ width: `${(3/MAX)*100}%`,  background: 'rgba(29,158,117,0.22)' }} />
-                  <div style={{ width: `${(4/MAX)*100}%`,  background: 'rgba(239,159,39,0.22)'  }} />
-                  <div style={{ flex: 1,                   background: 'rgba(226,75,74,0.18)'   }} />
+                  <div style={{ width: `${(T.leadTime.p1/MAX)*100}%`,                             background: 'rgba(29,158,117,0.22)' }} />
+                  <div style={{ width: `${((T.leadTime.p2-T.leadTime.p1)/MAX)*100}%`,             background: 'rgba(239,159,39,0.10)'  }} />
+                  <div style={{ width: `${((T.leadTime.p3-T.leadTime.p2)/MAX)*100}%`,             background: 'rgba(239,159,39,0.25)'  }} />
+                  <div style={{ flex: 1,                                                           background: 'rgba(226,75,74,0.18)'   }} />
                 </div>
-                {/* Zone dividers */}
-                <div style={{ position:'absolute', top:0, bottom:0, left:`${(3/MAX)*100}%`, width:1.5, background:'rgba(29,158,117,0.4)',  pointerEvents:'none' }} />
-                <div style={{ position:'absolute', top:0, bottom:0, left:`${(7/MAX)*100}%`, width:1.5, background:'rgba(239,159,39,0.4)', pointerEvents:'none' }} />
+                {/* Zone dividers at 3d, 5d, 7d */}
+                <div style={{ position:'absolute', top:0, bottom:0, left:`${(T.leadTime.p1/MAX)*100}%`, width:1.5, background:'rgba(29,158,117,0.4)',  pointerEvents:'none' }} />
+                <div style={{ position:'absolute', top:0, bottom:0, left:`${(T.leadTime.p2/MAX)*100}%`, width:1.5, background:'rgba(239,159,39,0.5)',  pointerEvents:'none' }} />
+                <div style={{ position:'absolute', top:0, bottom:0, left:`${(T.leadTime.p3/MAX)*100}%`, width:1.5, background:'rgba(226,75,74,0.4)',   pointerEvents:'none' }} />
                 {/* Marker */}
                 <div style={{
                   position: 'absolute', top: -6, bottom: -6,
@@ -406,7 +438,13 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
               {/* Scale labels */}
               <div style={{ position: 'relative', height: 18, marginTop: 8 }}>
-                {[{ pos: 0, label: '0d', c: 'var(--text-muted)' }, { pos: (3/MAX)*100, label: '3d', c: C.green }, { pos: (7/MAX)*100, label: '7d', c: C.amber }, { pos: 100, label: '15d', c: 'var(--text-muted)' }].map(({ pos, label, c }) => (
+                {[
+                  { pos: 0,                            label: '0d',  c: 'var(--text-muted)' },
+                  { pos: (T.leadTime.p1/MAX)*100,      label: '3d',  c: C.green  },
+                  { pos: (T.leadTime.p2/MAX)*100,      label: '5d',  c: C.amber  },
+                  { pos: (T.leadTime.p3/MAX)*100,      label: '7d',  c: C.red    },
+                  { pos: 100,                          label: '15d', c: 'var(--text-muted)' },
+                ].map(({ pos, label, c }) => (
                   <span key={label} style={{ position:'absolute', left:`${pos}%`, transform:'translateX(-50%)', fontSize:9, color:c, whiteSpace:'nowrap' }}>{label}</span>
                 ))}
               </div>

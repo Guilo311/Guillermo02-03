@@ -60,6 +60,18 @@ const defaultDevelopmentDemoUsers = [
     plan: "essencial" as const,
     name: "Cliente Local GLX",
   },
+  {
+    email: "pro@glx.local",
+    password: "Pro123!",
+    plan: "pro" as const,
+    name: "Pro Local GLX",
+  },
+  {
+    email: "enterprise@glx.local",
+    password: "Enterprise123!",
+    plan: "enterprise" as const,
+    name: "Enterprise Local GLX",
+  },
 ];
 
 if (isProduction && !jwtSecret) {

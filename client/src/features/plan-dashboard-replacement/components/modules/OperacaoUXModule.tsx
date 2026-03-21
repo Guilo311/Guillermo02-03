@@ -115,9 +115,9 @@ export function OperacaoUXModule({ opsWeeks, filtered, kpis, byProf, showTargets
     r180: w.return180d ?? +(kpis.returnRate),
   }));
   const returnByChannel = [
-    { name: 'Indicacao', rate: 65 }, { name: 'Presencial', rate: 52 },
-    { name: 'Google', rate: 41 },   { name: 'Organico', rate: 38 },
-    { name: 'Telefone', rate: 35 }, { name: 'Instagram', rate: 28 },
+    { name: 'Indicação', rate: 65 }, { name: 'Presencial', rate: 52 },
+    { name: 'Google', rate: 41 },   { name: 'Telefone', rate: 35 },
+    { name: 'Instagram', rate: 28 },
   ];
 
   // KPI 30 — SLA response distribution

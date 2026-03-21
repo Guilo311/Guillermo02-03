@@ -13,7 +13,7 @@ import { AIAssistantModule } from './modules/AIAssistantModule';
 import {
   type Appointment, Filters, getAllAppointments, applyFilters, computeKPIs,
   computeByProfessional, computeByChannel, computeByProcedure,
-  computeByWeekday, computeWeeklyTrend, getFilterOptions,
+  computeWeeklyTrend, getFilterOptions,
 } from '../data/mockData';
 
 interface Props {
@@ -64,21 +64,6 @@ function weekKey(dateStr: string) {
   return ws.toISOString().slice(0, 10);
 }
 
-function badge(priority: Priority) {
-  if (priority === 'P1') return { label: 'P1', className: 'red' };
-  if (priority === 'P2') return { label: 'P2', className: 'yellow' };
-  if (priority === 'P3') return { label: 'P3', className: 'blue' };
-  return { label: 'OK', className: 'green' };
-}
-
-function renderMoneyValueWithSmallSymbol(value: string) {
-  if (!value.startsWith('R$')) return value;
-  return (
-    <>
-      <span className="money-symbol">R$</span> {value.replace(/^R\$\s*/, '')}
-    </>
-  );
-}
 
 const EMPTY_TEAM_MEMBER_FORM: TeamMemberForm = {
   name: '',
@@ -93,7 +78,7 @@ const EMPTY_TEAM_MEMBER_FORM: TeamMemberForm = {
 };
 
 function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange, lang = "PT", appointments, integrationHealth }: Props) {
-  const { currency, convertMoneyValue, formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
+  const { formatCompactMoney, moneyTitle } = useCurrency();
   const { t } = useTranslation();
   const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
   const ct = useMemo(() => getChartTheme(theme, visualScale), [theme, visualScale]);
@@ -104,7 +89,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
   const byProf = useMemo(() => computeByProfessional(filtered), [filtered]);
   const byChannel = useMemo(() => computeByChannel(filtered), [filtered]);
   const byProc = useMemo(() => computeByProcedure(filtered), [filtered]);
-  const byWeekday = useMemo(() => computeByWeekday(filtered), [filtered]);
   const weeklyTrend = useMemo(() => computeWeeklyTrend(filtered), [filtered]);
   const [teamMemberForm, setTeamMemberForm] = useState<TeamMemberForm>(EMPTY_TEAM_MEMBER_FORM);
   const [manualTeamMembers, setManualTeamMembers] = useState<ProfessionalRow[]>([]);
@@ -120,31 +104,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
     ...manualTeamMembers,
   ], [baseTeamMemberOverrides, byProf, deletedBaseTeamMemberNames, manualTeamMembers]);
   const sortedFiltered = useMemo(() => [...filtered].sort((a,b) => a.date.localeCompare(b.date)), [filtered]);
-  const agendaProWeeks = useMemo(() => {
-    const buckets = new Map<string, typeof filtered>();
-    sortedFiltered.forEach((row) => {
-      const key = weekKey(row.date);
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(row);
-    });
-    return Array.from(buckets.entries()).sort((a,b)=>a[0].localeCompare(b[0])).slice(-8).map(([key, rows], idx) => {
-      const total = rows.length;
-      const realized = rows.filter(r => r.status === 'Realizada').length;
-      const noShow = rows.filter(r => r.status === 'No-Show').length;
-      const confirmed = rows.filter(r => r.status === 'Confirmada').length;
-      const leadTimeDays = total ? rows.reduce((s, r, i) => s + 0.9 + (r.waitMinutes/60)*0.9 + (i%4)*0.45, 0) / total : 0;
-      return {
-        label: `S${idx+1}`,
-        total,
-        realized,
-        noShow,
-        confirmed,
-        noShowRate: total ? (noShow/total)*100 : 0,
-        occupancyRate: total ? (realized/Math.max(total, Math.ceil(total*1.04)))*100 : 0,
-        leadTimeDays,
-      };
-    });
-  }, [sortedFiltered]);
   const agendaWeeksForModule = useMemo(() => {
     const buckets = new Map<string, typeof filtered>();
     sortedFiltered.forEach((row) => {
@@ -180,77 +139,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       return { label: w.label, gross, net, cancelLoss, delinquency, chargebacks, conventionGlosas, netPctGross: gross > 0 ? (net / gross) * 100 : 0, marginPct: net > 0 ? (profit / net) * 100 : 0, ticketAvg: w.avgTicket, ticketBenchmark: 700 + (idx % 2) * 35, delinquencyPct: gross > 0 ? (delinquency / gross) * 100 : 0, fixedPct: net > 0 ? (fixedExpenses / net) * 100 : 0, receiptsCount: Math.max(1, w.realized), consultations: Math.max(1, w.realized), d20ProgressPct: 62 + idx * 4, d20ThresholdPct: 80 };
     });
   }, [weeklyTrend]);
-  const segmentedNoShow = useMemo(() => {
-    const byDoctor = byProf.map(p => ({ segment: `Médico: ${p.name}`, noShowRate: p.noShowRate, n: p.total }));
-    const byChannelSeg = activeChannels.map(c => ({ segment: `Canal: ${c.name}`, noShowRate: c.noShowRate + (c.name.includes('Instagram') ? 10 : 0), n: c.total }));
-    const slots = ['09h', '11h', '14h', '16h'].map((slot, idx) => ({
-      segment: `Horário: ${slot}`,
-      noShowRate: Math.max(3, Math.min(32, kpis.noShowRate + (idx===2 ? 12 : idx*2))),
-      n: Math.max(8, Math.round(kpis.total / 4)),
-    }));
-    return [...byDoctor, ...byChannelSeg, ...slots].sort((a,b)=>b.noShowRate-a.noShowRate);
-  }, [byProf, activeChannels, kpis.noShowRate, kpis.total]);
-  const slotOccupancyByProf = useMemo(() => {
-    return byProf.flatMap((p, pIdx) => ['09h','11h','14h','16h'].map((slot, sIdx) => {
-      const occupancy = Math.max(35, Math.min(98, p.occupancyRate + (sIdx-1)*8 - (pIdx===1 && sIdx===2 ? 18 : 0)));
-      return { label: `${p.name} → ${slot}`, prof: p.name, slot, occupancy, capacityN: Math.max(4, Math.round(p.total/4)) };
-    }));
-  }, [byProf]);
-  const heatmapDayHourProf = useMemo(() => {
-    const hours = ['08h','10h','12h','14h','16h','18h'];
-    return byProf.map((p, pIdx) => ({
-      name: p.name,
-      data: hours.map((h, hIdx) => ({
-        x: h,
-        y: Math.max(20, Math.min(100, Math.round(p.occupancyRate + (hIdx-2)*6 - (h==='14h' && pIdx===1 ? 20 : 0)))),
-      })),
-    }));
-  }, [byProf]);
-  const cancelReasons = useMemo(() => {
-    const totalCancels = Math.max(1, kpis.canceled);
-    const rows = [
-      { reason: 'Preço / orçamento', count: Math.round(totalCancels * 0.26) },
-      { reason: 'Conflito de agenda', count: Math.round(totalCancels * 0.22) },
-      { reason: 'Melhorou / desistiu', count: Math.round(totalCancels * 0.18) },
-      { reason: 'Sem confirmação', count: Math.round(totalCancels * 0.16) },
-      { reason: 'Localização / transporte', count: Math.max(1, totalCancels - (Math.round(totalCancels * 0.26)+Math.round(totalCancels * 0.22)+Math.round(totalCancels * 0.18)+Math.round(totalCancels * 0.16))) },
-    ];
-    return rows.map(r => ({ ...r, pct: (r.count/totalCancels)*100 })).sort((a,b)=>b.count-a.count);
-  }, [kpis.canceled]);
-  const overbookingSim = useMemo(() => {
-    const noShowHist = Math.round(kpis.noShows);
-    const coverTarget = Math.round(noShowHist * 0.6);
-    const activatedSlots = Math.max(1, Math.round(coverTarget * 0.9));
-    const estimatedExtraRevenue = activatedSlots * Math.round(kpis.avgTicket || 300);
-    const estimatedWait = 8 + (activatedSlots / Math.max(noShowHist,1)) * 18;
-    const npsTradeoff = [
-      { x: 0, revenue: 0, nps: kpis.avgNPS + 0.2 },
-      { x: Math.round(activatedSlots * 0.5), revenue: estimatedExtraRevenue * 0.55, nps: kpis.avgNPS - 0.2 },
-      { x: activatedSlots, revenue: estimatedExtraRevenue, nps: kpis.avgNPS - 0.7 },
-      { x: activatedSlots + 2, revenue: estimatedExtraRevenue * 1.08, nps: kpis.avgNPS - 1.3 },
-    ];
-    return { noShowHist, coverTarget, activatedSlots, estimatedExtraRevenue, estimatedWait, npsTradeoff };
-  }, [kpis.noShows, kpis.avgTicket, kpis.avgNPS]);
-  const agendaProRules = useMemo(() => {
-    const current = agendaProWeeks[agendaProWeeks.length - 1];
-    const worstSegment = segmentedNoShow[0];
-    const worstSlot = slotOccupancyByProf.reduce((acc, s)=>s.occupancy<acc.occupancy?s:acc, slotOccupancyByProf[0] ?? { occupancy: 100, label: '-', capacityN: 0 });
-    const topCancel = cancelReasons[0];
-    const classifyNoShow = (v:number): Priority => v > 20 ? 'P1' : v >= 12 ? 'P2' : v >= 8 ? 'P3' : 'OK';
-    const classifyOcc = (v:number): Priority => v < 55 ? 'P1' : v < 70 ? 'P2' : v < 80 ? 'P3' : 'OK';
-    const classifyLead = (v:number): Priority => v > 7 ? 'P1' : v > 3 ? 'P2' : 'OK';
-    const classifyCancel = (v:number): Priority => v > 40 ? 'P1' : 'OK';
-    const classifyOverbook = (v:number): Priority => v > 20 ? 'P1' : 'OK';
-    const rows: Array<{ id: string; kpi: string; value: string; meta: string; baseN: string; priority: Priority; action: string }> = [
-      { id:'01', kpi:'No-Show Segmentado (%)', value:`${(worstSegment?.noShowRate ?? 0).toFixed(1)}%`, meta:'< 8%', baseN:String(worstSegment?.n ?? 0), priority:classifyNoShow(worstSegment?.noShowRate ?? 0), action:`Drill-down: ${worstSegment?.segment ?? '-'}` },
-      { id:'02', kpi:'Ocupação por Profissional/Slot (%)', value:`${(worstSlot?.occupancy ?? 0).toFixed(0)}%`, meta:'> 80%', baseN:String(worstSlot?.capacityN ?? 0), priority:classifyOcc(worstSlot?.occupancy ?? 0), action:'Redistribuição automática de slots' },
-      { id:'03', kpi:'Heatmap Dia×Hora×Prof', value:'Padrão recorrente detectado', meta:'Nenhum slot <40% após 10h', baseN:String(kpis.total), priority:((heatmapDayHourProf.some(r=>r.data.some(c=>c.x!=='08h' && Number(c.y) < 40))) ? 'P2' : 'OK'), action:'Filtro por especialidade + redistribuição' },
-      { id:'04', kpi:'Lead Time do Agendamento (dias)', value:`${((current?.leadTimeDays ?? 0)).toFixed(1)}d`, meta:'< 3d', baseN:String(kpis.leads), priority:classifyLead(current?.leadTimeDays ?? 0), action:'Atuar no funil comercial/recepção' },
-      { id:'05', kpi:'Cancelamentos por Motivo', value:`${(topCancel?.pct ?? 0).toFixed(0)}%`, meta:'Top motivo < 30%', baseN:String(kpis.canceled), priority:classifyCancel(topCancel?.pct ?? 0), action:`Ação estrutural: ${topCancel?.reason ?? '-'}` },
-      { id:'06', kpi:'Overbooking Controlado', value:`${overbookingSim.coverTarget}/${overbookingSim.noShowHist} slots`, meta:'Cobrir 60% do no-show', baseN:String(overbookingSim.noShowHist), priority:classifyOverbook(overbookingSim.estimatedWait), action:`Recalibrar se espera estimada ${overbookingSim.estimatedWait.toFixed(0)}min` },
-    ];
-    return rows;
-  }, [agendaProWeeks, segmentedNoShow, slotOccupancyByProf, cancelReasons, heatmapDayHourProf, kpis.total, kpis.leads, kpis.canceled, kpis.noShows, overbookingSim]);
   const financeAdvWeeks = useMemo(() => {
     const weeks = weeklyTrend.slice(-8);
     return weeks.map((w, idx) => {
@@ -269,32 +157,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       };
     });
   }, [weeklyTrend, kpis.avgTicket]);
-  const costCenters = useMemo(() => {
-    const totalNet = Math.max(1, kpis.netRevenue);
-    const totalEbitda = financeAdvWeeks.length ? financeAdvWeeks[financeAdvWeeks.length - 1].ebitda : 0;
-    return [
-      { area: 'Recepcao', revenue: totalNet * 0.18, cost: totalNet * 0.11, ebitda: totalEbitda * 0.16 },
-      { area: 'Medico', revenue: totalNet * 0.62, cost: totalNet * 0.43, ebitda: totalEbitda * 0.56 },
-      { area: 'Marketing', revenue: totalNet * 0.20, cost: totalNet * 0.14, ebitda: totalEbitda * 0.28 },
-    ].map((r) => ({ ...r, margin: r.revenue > 0 ? (r.ebitda / r.revenue) * 100 : 0 }));
-  }, [financeAdvWeeks, kpis.netRevenue]);
-  const serviceMargins = useMemo(() => {
-    return byProc.map((p, idx) => {
-      const directCost = p.grossRevenue * (0.18 + (idx % 3) * 0.04);
-      const repasse = p.grossRevenue * (0.22 + (idx % 2) * 0.03);
-      const margin = p.grossRevenue > 0 ? ((p.grossRevenue - directCost - repasse) / p.grossRevenue) * 100 : 0;
-      return { ...p, directCost, repasse, margin, simulatedUp5PctEbitdaImpact: p.grossRevenue * 0.05 * (margin / 100) };
-    }).sort((a, b) => b.grossRevenue - a.grossRevenue);
-  }, [byProc]);
-  const profMargins = useMemo(() => {
-    return byProf.map((p, idx) => {
-      const repasse = p.grossRevenue * (0.34 + (idx % 2) * 0.04);
-      const custoHora = p.grossRevenue * (0.12 + (idx % 3) * 0.02);
-      const margin = p.grossRevenue > 0 ? ((p.grossRevenue - repasse - custoHora) / p.grossRevenue) * 100 : 0;
-      const productivityScore = Math.max(0, margin) * 0.45 + p.total * 0.7 + p.avgNPS * 4;
-      return { ...p, repasse, custoHora, margin, productivityScore };
-    });
-  }, [byProf]);
   const agingReceivables = useMemo(() => {
     const gross = Math.max(1, kpis.grossRevenue);
     const totalRecv = gross * 0.42;
@@ -304,39 +166,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
     const f90p = totalRecv - f0_30 - f31_60 - f61_90;
     return { totalRecv, buckets: [{ label: '0-30d', value: f0_30 }, { label: '31-60d', value: f31_60 }, { label: '61-90d', value: f61_90 }, { label: '>90d', value: f90p }] };
   }, [kpis.grossRevenue]);
-  const cashProjection8w = useMemo(() => {
-    const current = Math.max(8000, kpis.grossRevenue * 0.32);
-    const labels = Array.from({ length: 8 }, (_, i) => `S${i + 1}`);
-    let base = current;
-    let cons = current;
-    let opt = current;
-    const scenarioBase: number[] = [];
-    const scenarioCons: number[] = [];
-    const scenarioOpt: number[] = [];
-    labels.forEach((_, i) => {
-      const entries = (financeAdvWeeks[i % Math.max(financeAdvWeeks.length, 1)]?.forecastP50 ?? (kpis.grossRevenue / 4)) * (i < 2 ? 0.9 : 1.02);
-      const exits = (kpis.totalCost / 4) * (0.95 + (i % 3) * 0.05);
-      base += entries - exits;
-      cons += entries * 0.86 - exits * 1.05;
-      opt += entries * 1.08 - exits * 0.97;
-      scenarioBase.push(Math.round(base));
-      scenarioCons.push(Math.round(cons));
-      scenarioOpt.push(Math.round(opt));
-    });
-    return { labels, scenarioBase, scenarioCons, scenarioOpt, current };
-  }, [financeAdvWeeks, kpis.grossRevenue, kpis.totalCost]);
-  const revenueConcentration = useMemo(() => {
-    const sortedServices = [...serviceMargins].sort((a, b) => b.grossRevenue - a.grossRevenue);
-    const total = Math.max(1, sortedServices.reduce((s, r) => s + r.grossRevenue, 0));
-    const top3 = sortedServices.slice(0, 3);
-    const topItemPct = top3[0] ? (top3[0].grossRevenue / total) * 100 : 0;
-    return {
-      labels: top3.map((s) => s.name),
-      values: top3.map((s) => Math.round((s.grossRevenue / total) * 1000) / 10),
-      topItemPct,
-      total,
-    };
-  }, [serviceMargins]);
   const breakEven = useMemo(() => {
     const fixedMonthly = Math.max(20000, kpis.totalCost * 0.65);
     const contributionMarginPct = Math.max(0.15, Math.min(0.8, (kpis.netRevenue - kpis.totalCost * 0.35) / Math.max(kpis.netRevenue, 1)));
@@ -350,28 +179,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
     ].map((s) => ({ ...s, revenue: s.ticket * s.volume, coversPct: (s.ticket * s.volume) / breakEvenRevenue * 100 }));
     return { fixedMonthly, contributionMarginPct: contributionMarginPct * 100, breakEvenRevenue, day15Coverage, day20Coverage, sim };
   }, [kpis.totalCost, kpis.netRevenue, kpis.grossRevenue, kpis.avgTicket, kpis.realized]);
-  const financeAdvRules = useMemo(() => {
-    const last = financeAdvWeeks[financeAdvWeeks.length - 1];
-    const ebitdaMargin = last?.ebitdaMargin ?? 0;
-    const worstService = serviceMargins.reduce((a, b) => (b.margin < a.margin ? b : a), serviceMargins[0] ?? ({ name: '-', margin: 0, grossRevenue: 0 } as any));
-    const worstProf = profMargins.reduce((a, b) => (b.margin < a.margin ? b : a), profMargins[0] ?? ({ name: '-', margin: 0, grossRevenue: 0 } as any));
-    const forecastGap = last && last.forecastP50 ? Math.abs(last.grossRevenue - last.forecastP50) / last.forecastP50 * 100 : 0;
-    const gt90 = agingReceivables.buckets.find((b) => b.label === '>90d')?.value ?? 0;
-    const gt90PctRevenue = (gt90 / Math.max(kpis.grossRevenue, 1)) * 100;
-    const anyNegativeCash = cashProjection8w.scenarioCons.some((v) => v < 0);
-    const topConcentration = revenueConcentration.topItemPct;
-    const p = (cond1:boolean, cond2:boolean, cond3:boolean): Priority => cond1 ? 'P1' : cond2 ? 'P2' : cond3 ? 'P3' : 'OK';
-    return [
-      { id:'01', kpi:'DRE / EBITDA Operacional', value:`${ebitdaMargin.toFixed(1)}%`, meta:'> 20%', baseN:fmt(last?.netRevenue ?? kpis.netRevenue), priority:p(ebitdaMargin<10, ebitdaMargin<15, ebitdaMargin<20), action:'Ajustar centros de custo e mix semanal' },
-      { id:'02', kpi:'Margem por Servico', value:`${worstService.name}: ${worstService.margin.toFixed(1)}%`, meta:'Top3 > 25%', baseN:fmt(worstService.grossRevenue ?? 0), priority:(worstService.margin < 10 ? 'P1' : 'OK') as Priority, action:'Revisar precificacao/repasse + simulador 5%' },
-      { id:'03', kpi:'Margem por Profissional', value:`${worstProf.name}: ${worstProf.margin.toFixed(1)}%`, meta:'Positivo em todos', baseN:fmt(worstProf.grossRevenue ?? 0), priority:(worstProf.margin < 0 ? 'P1' : 'OK') as Priority, action:'Revisar repasse e custo/hora' },
-      { id:'04', kpi:'Forecast Receita (IA)', value:`Gap ${forecastGap.toFixed(1)}%`, meta:'Desvio +-10%', baseN:String((last ? (last.realized + last.noShows + Math.round(last.canceled * 0.5)) : 0)), priority:(forecastGap > 20 ? 'P1' : forecastGap > 10 ? 'P2' : 'OK') as Priority, action:'Recalibrar sazonalidade e agenda confirmada' },
-      { id:'05', kpi:'Recebiveis Aging', value:`>90d ${gt90PctRevenue.toFixed(1)}%`, meta:'>60d < 5% receita', baseN:fmt(agingReceivables.totalRecv), priority:(gt90PctRevenue > 5 ? 'P1' : 'OK') as Priority, action:'Cobrança automatica WhatsApp + régua' },
-      { id:'06', kpi:'Projecao de Caixa 8s', value:anyNegativeCash ? 'Semana negativa' : 'Positivo', meta:'Sempre positivo', baseN:'Fluxo previsto', priority:(anyNegativeCash ? 'P1' : 'OK') as Priority, action:'Cortar saidas / reforcar caixa' },
-      { id:'07', kpi:'Concentracao de Receita', value:`Top item ${topConcentration.toFixed(1)}%`, meta:'< 50% em 1 item', baseN:fmt(revenueConcentration.total), priority:(topConcentration > 60 ? 'P1' : topConcentration > 50 ? 'P2' : 'OK') as Priority, action:'Diversificar mix e canais' },
-      { id:'08', kpi:'Break-Even', value:`D20 ${breakEven.day20Coverage.toFixed(0)}%`, meta:'> 90% coberto no dia 15', baseN:fmt(breakEven.breakEvenRevenue), priority:(breakEven.day20Coverage < 70 ? 'P1' : breakEven.day15Coverage < 90 ? 'P2' : 'OK') as Priority, action:'Ajustar ticket x volume e despesas fixas' },
-    ];
-  }, [financeAdvWeeks, serviceMargins, profMargins, agingReceivables, cashProjection8w, revenueConcentration, breakEven, kpis.netRevenue, kpis.grossRevenue]);
   const marketingProWeeks = useMemo(() => {
     const base = weeklyTrend.slice(-8);
     return base.map((w, idx) => {
@@ -415,41 +222,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
     });
     return rows;
   }, [activeChannels, marketingProWeeks]);
-  const marketingProRules = useMemo(() => {
-    const latest = marketingProWeeks[marketingProWeeks.length - 1];
-    const prev = marketingProWeeks[marketingProWeeks.length - 2];
-    const leadDrop = latest && prev && prev.leadsTotal ? ((prev.leadsTotal - latest.leadsTotal) / prev.leadsTotal) * 100 : 0;
-    const worstCAC = marketingChannelStats.reduce((a,b)=> (b.cac - b.avgTicket) > (a.cac - a.avgTicket) ? b : a, marketingChannelStats[0] ?? ({} as any));
-    const funnelOverall = latest?.leadsTotal ? (latest.attended / latest.leadsTotal) * 100 : 0;
-    const bottleneckLosses = [
-      { step: 'Lead->Contato', loss: latest?.leadsTotal ? (1 - (latest.contacts / latest.leadsTotal)) * 100 : 0 },
-      { step: 'Contato->Agendamento', loss: latest?.contacts ? (1 - (latest.booked / latest.contacts)) * 100 : 0 },
-      { step: 'Agendamento->Comparecimento', loss: latest?.booked ? (1 - (latest.attended / latest.booked)) * 100 : 0 },
-    ].sort((a,b)=>b.loss-a.loss);
-    const worstROI = marketingChannelStats.reduce((a,b)=>b.roi<a.roi?b:a, marketingChannelStats[0] ?? ({} as any));
-    const avgSpeed = marketingChannelStats.length ? marketingChannelStats.reduce((s,r)=>s+r.speedDays,0)/marketingChannelStats.length : 0;
-    const ltvCac = marketingChannelStats.length ? marketingChannelStats.reduce((s,r)=>s+r.ltvCac,0)/marketingChannelStats.length : 0;
-    const p=(c1:boolean,c2:boolean)=> c1 ? 'P1' : c2 ? 'P2' : 'OK';
-    return [
-      { id:'01', kpi:'Leads por Canal / Semana', value:`${(latest?.leadsTotal ?? 0)} leads`, meta:'Meta por canal', baseN:String(latest?.leadsTotal ?? 0), priority:p(leadDrop>40, leadDrop>25) as Priority, action:`Queda ${leadDrop.toFixed(0)}% vs semana anterior` },
-      { id:'02', kpi:'CAC por Canal', value:`${worstCAC?.name ?? '-'} ${fmt(worstCAC?.cac ?? 0)}`, meta:'CAC < Ticket', baseN:String(worstCAC?.newPatients ?? 0), priority:((worstCAC?.cac ?? 0) > (worstCAC?.avgTicket ?? 0) ? 'P1' : 'OK') as Priority, action:'Suspender/ajustar criativo e segmentacao' },
-      { id:'03', kpi:'Funil Lead->Consulta', value:`${funnelOverall.toFixed(1)}%`, meta:'> 22%', baseN:String(latest?.leadsTotal ?? 0), priority:p(funnelOverall<10, funnelOverall<15) as Priority, action:`Gargalo: ${bottleneckLosses[0]?.step} (${bottleneckLosses[0]?.loss.toFixed(0)}% perda)` },
-      { id:'04', kpi:'LTV / LTV:CAC', value:`${ltvCac.toFixed(1)}x`, meta:'> 3x CAC', baseN:'Base historica', priority:((ltvCac < 2) ? 'P1' : (ltvCac < 3 ? 'P2' : 'OK')) as Priority, action:'Reavaliar canal pago e retenção por coorte' },
-      { id:'05', kpi:'ROI por Canal', value:`${worstROI?.name ?? '-'} ${worstROI?.roi?.toFixed?.(0) ?? '0'}%`, meta:'> 200%', baseN:fmt(worstROI?.revenue ?? 0), priority:((worstROI?.roi ?? 0) < 0 ? 'P1' : ((worstROI?.roi ?? 0) < 200 ? 'P2' : 'OK')) as Priority, action:'Semaforo de corte/reallocacao de verba' },
-      { id:'06', kpi:'Velocidade do Funil (dias)', value:`${avgSpeed.toFixed(1)}d`, meta:'< 5d', baseN:String(marketingChannelStats.reduce((s,r)=>s+r.newPatients,0)), priority:((avgSpeed > 15) ? 'P1' : (avgSpeed > 10 ? 'P2' : 'OK')) as Priority, action:'SLA comercial e follow-up no mesmo dia' },
-      { id:'07', kpi:'Waterfall Variacao Receita', value:'Componente Retencao incluso', meta:'Explicada >= 90%', baseN:'Periodo vs periodo', priority:('OK' as Priority), action:'Monitorar mix negativo crescente' },
-    ];
-  }, [marketingProWeeks, marketingChannelStats]);
-  const opsProTrend = useMemo(() => {
-    return weeklyTrend.slice(-8).map((w, idx) => ({
-      label: w.label,
-      nps: Math.max(6.5, Math.min(9.6, kpis.avgNPS + (idx - 3) * 0.08)),
-      wait: Math.max(6, Math.round(kpis.avgWait + (idx % 3) * 2 - 2)),
-      return90: Math.max(8, Math.min(65, kpis.returnRate + (idx - 2) * 1.5)),
-      slaLeadH: Math.max(0.4, +(0.8 + (idx % 4) * 0.55 + (idx === 6 ? 2.6 : 0)).toFixed(1)),
-      cancelWithReasonPct: Math.max(35, Math.min(96, 78 + (idx % 3) * 4 - (idx === 5 ? 20 : 0))),
-    }));
-  }, [weeklyTrend, kpis.avgNPS, kpis.avgWait, kpis.returnRate]);
   const opsProByProfessional = useMemo(() => {
     return byProf.map((p, idx) => ({
       ...p,
@@ -460,13 +232,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       rcaHint: p.avgNPS < 7.5 ? 'Atraso + handoff recepcao + expectativa' : 'Sem RCA critica',
     }));
   }, [byProf]);
-  const opsCohortByProcedure = useMemo(() => {
-    return byProc.map((p, idx) => ({
-      name: p.name,
-      return90: Math.max(8, Math.min(70, 24 + idx * 7 + (p.avgTicket > 500 ? 6 : -2))),
-      eligible: Math.max(8, Math.round(p.realized * 0.65)),
-    }));
-  }, [byProc]);
   const receptionSLARanking = useMemo(() => {
     const names = ['Julia (Recepcao)', 'Marina (Recepcao)', 'Paula (Recepcao)'];
     return names.map((name, idx) => ({
@@ -475,56 +240,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       leadsResponded: Math.max(10, Math.round(kpis.leads / 3) + idx * 3),
     }));
   }, [kpis.leads]);
-  const areaProductivity = useMemo(() => {
-    const rows = [
-      { area: 'Recepcao', produtividade: 72, qualidade: 78, aderencia: 69 },
-      { area: 'Medico', produtividade: 88, qualidade: 84, aderencia: 80 },
-      { area: 'Adm', produtividade: 76, qualidade: 82, aderencia: 74 },
-      { area: 'Marketing', produtividade: 81, qualidade: 73, aderencia: 70 },
-    ];
-    return rows.map((r) => ({ ...r, score: +(r.produtividade * 0.4 + r.qualidade * 0.35 + r.aderencia * 0.25).toFixed(1) }));
-  }, []);
-  const checklistByArea = useMemo(() => {
-    return [
-      { area: 'Recepcao', completed: 62, total: 80, role: 'recepcao' },
-      { area: 'Medico', completed: 55, total: 60, role: 'medico' },
-      { area: 'Adm', completed: 38, total: 50, role: 'adm' },
-    ].map((r) => ({ ...r, pct: (r.completed / r.total) * 100 }));
-  }, []);
-  const opsProRules = useMemo(() => {
-    const worstNps = opsProByProfessional.reduce((a,b)=>b.avgNPS<a.avgNPS?b:a, opsProByProfessional[0] ?? ({} as any));
-    const worstWait = opsProByProfessional.reduce((a,b)=>b.waitByDoctor>a.waitByDoctor?b:a, opsProByProfessional[0] ?? ({} as any));
-    const worstReturn = opsProByProfessional.reduce((a,b)=>b.return90<a.return90?b:a, opsProByProfessional[0] ?? ({} as any));
-    const worstSla = receptionSLARanking.reduce((a,b)=>b.slaH>a.slaH?b:a, receptionSLARanking[0] ?? ({} as any));
-    const worstArea = areaProductivity.reduce((a,b)=>b.score<a.score?b:a, areaProductivity[0] ?? ({} as any));
-    const latestCancelReason = opsProTrend[opsProTrend.length - 1]?.cancelWithReasonPct ?? 0;
-    const worstChecklist = checklistByArea.reduce((a,b)=>b.pct<a.pct?b:a, checklistByArea[0] ?? ({} as any));
-    return [
-      { id:'01', kpi:'NPS por Profissional', value:`${worstNps?.name ?? '-'} ${worstNps?.avgNPS?.toFixed?.(1) ?? '0'}`, meta:'> 8.0 todos', baseN:String(worstNps?.npsResponses ?? 0), priority:((worstNps?.avgNPS ?? 10) < 7.5 ? 'P1' : 'OK') as Priority, action: worstNps?.avgNPS < 7.5 ? `RCA: ${worstNps?.rcaHint}` : 'Monitorar tendencia mensal' },
-      { id:'02', kpi:'Espera por Medico (min)', value:`${worstWait?.name ?? '-'} ${worstWait?.waitByDoctor ?? 0}min`, meta:'< 12 min', baseN:String(worstWait?.total ?? 0), priority:((worstWait?.waitByDoctor ?? 0) > 30 ? 'P1' : (worstWait?.waitByDoctor ?? 0) > 20 ? 'P2' : 'OK') as Priority, action:'Ajustar agenda/slot e triagem de atrasos' },
-      { id:'03', kpi:'Retorno/Fidelizacao 90d', value:`${worstReturn?.name ?? '-'} ${worstReturn?.return90?.toFixed?.(1) ?? '0'}%`, meta:'> 40%', baseN:String(worstReturn?.realized ?? 0), priority:((worstReturn?.return90 ?? 100) < 15 ? 'P1' : (worstReturn?.return90 ?? 100) < 25 ? 'P2' : 'OK') as Priority, action:'Cohort por procedimento + plano de retorno' },
-      { id:'04', kpi:'SLA Resposta ao Lead (h)', value:`${worstSla?.name ?? '-'} ${worstSla?.slaH ?? 0}h`, meta:'< 1h', baseN:String(worstSla?.leadsResponded ?? 0), priority:((worstSla?.slaH ?? 0) > 4 ? 'P1' : (worstSla?.slaH ?? 0) > 2 ? 'P2' : 'OK') as Priority, action:'Ranking individual e escala de resposta' },
-      { id:'05', kpi:'Produtividade por Area', value:`${worstArea?.area ?? '-'} ${worstArea?.score?.toFixed?.(1) ?? '0'}%`, meta:'> 85%', baseN:'Metas por area', priority:((worstArea?.score ?? 100) < 60 ? 'P1' : (worstArea?.score ?? 100) < 75 ? 'P2' : 'OK') as Priority, action:'Plano de melhoria composto (produtividade/qualidade/processo)' },
-      { id:'06', kpi:'Cancelamentos com Motivo (%)', value:`${latestCancelReason.toFixed(1)}%`, meta:'> 80%', baseN:String(kpis.canceled), priority:((latestCancelReason < 50) ? 'P2' : 'OK') as Priority, action:'Tornar motivo obrigatorio e padronizado' },
-      { id:'07', kpi:'Checklists / Rotinas (%)', value:`${worstChecklist?.area ?? '-'} ${worstChecklist?.pct?.toFixed?.(1) ?? '0'}%`, meta:'> 90%', baseN:String(worstChecklist?.total ?? 0), priority:((worstChecklist?.pct ?? 100) < 70 ? 'P2' : 'OK') as Priority, action:`Checklists configuraveis por papel (${worstChecklist?.role ?? '-'})` },
-    ];
-  }, [opsProByProfessional, receptionSLARanking, areaProductivity, opsProTrend, checklistByArea, kpis.canceled]);
-
-  const drillProf = useCallback((idx: number) => {
-    const name = byProf[idx]?.name;
-    if (name) onFiltersChange({ ...filters, professional: filters.professional === name ? '' : name });
-  }, [byProf, filters, onFiltersChange]);
-
-  const drillChannel = useCallback((idx: number) => {
-    const name = activeChannels[idx]?.name;
-    if (name) onFiltersChange({ ...filters, channel: filters.channel === name ? '' : name });
-  }, [activeChannels, filters, onFiltersChange]);
-
-  const drillProc = useCallback((idx: number) => {
-    const name = byProc[idx]?.name;
-    if (name) onFiltersChange({ ...filters, procedure: filters.procedure === name ? '' : name });
-  }, [byProc, filters, onFiltersChange]);
-
   const handleTeamMemberFormChange = useCallback((field: keyof TeamMemberForm, value: string) => {
     setTeamMemberForm((current) => ({ ...current, [field]: value }));
   }, []);
@@ -667,10 +382,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
     setEditingBaseTeamMemberName(null);
   }, []);
 
-  const profClick = useMemo(() => ({ chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillProf(cfg.dataPointIndex) } } }), [drillProf]);
-  const channelClick = useMemo(() => ({ chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillChannel(cfg.dataPointIndex) } } }), [drillChannel]);
-  const procClick = useMemo(() => ({ chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillProc(cfg.dataPointIndex) } } }), [drillProc]);
-  const showFilterBar = activeTab !== 4;
+  const showFilterBar = activeTab !== 6;
 
   return (
     <div className="animate-fade-in" key={activeTab}>
@@ -691,16 +403,27 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
                         : filters.period === '3m'  ? '/ Trimestre'
                         : filters.period === '6m'  ? '/ Semestre'
                         : '/ Ano');
+        const periodReturnLabel = filters.period === '7d'  ? '7 Dias'
+                                : filters.period === '15d' ? '15 Dias'
+                                : filters.period === '30d' ? '30 Dias'
+                                : filters.period === '3m'  ? '3 Meses'
+                                : filters.period === '6m'  ? '6 Meses'
+                                : '12 Meses';
 
         const convLeadToAppt = (() => {
           const latest = marketingProWeeks[marketingProWeeks.length - 1];
           return latest?.leadsTotal > 0 ? (latest.booked / latest.leadsTotal) * 100 : 0;
         })();
-        const bestRoi = marketingChannelStats.length > 0
-          ? marketingChannelStats.reduce((b, c) => c.roi > b.roi ? c : b, marketingChannelStats[0])
+        const selectedRoi = filters.channel
+          ? (marketingChannelStats.find(c => c.name === filters.channel) ?? null)
           : null;
-        const roiColor = (bestRoi?.roi ?? 0) >= 200 ? CL.green : (bestRoi?.roi ?? 0) >= 100 ? CL.amber : CL.red;
-        const roiLabel = bestRoi ? `${bestRoi.roi.toFixed(0)}% (${bestRoi.name})` : '—';
+        const totalSpend   = marketingChannelStats.reduce((s, c) => s + c.spend,   0);
+        const totalRevenue = marketingChannelStats.reduce((s, c) => s + c.revenue, 0);
+        const totalRoi     = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
+        const activeRoi    = selectedRoi?.roi ?? totalRoi;
+        const activeRoiLabel = filters.channel ? filters.channel : 'Total';
+        const roiColor = activeRoi >= 200 ? CL.green : activeRoi >= 100 ? CL.amber : CL.red;
+        const roiLabel = `${activeRoi.toFixed(0)}% (${activeRoiLabel})`;
 
         const cols = [
           {
@@ -727,7 +450,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
               { label:`${t('Leads Gerados')} ${pSuffix}`,      value:`${kpis.leads}`,                         color:kpis.leads>=80?CL.green:kpis.leads>=40?CL.amber:CL.red,   desc:t('Novos interessados — crescendo?') },
               { label:t('Conversão Lead → Agendamento (%)'),   value:`${convLeadToAppt.toFixed(1)}%`,         color:cl(convLeadToAppt,22,15),                                  desc:t('Meta > 25% — quantos viraram consulta?') },
               { label:t('CPL — Custo por Paciente'),           value:fmt(kpis.cpl),                           color:cl(kpis.cpl,kpis.avgTicket/4,kpis.avgTicket*0.6,true),    desc:t('Custo por novo paciente captado') },
-              { label:t('ROI por Canal (%)'),                  value:roiLabel,                                color:roiColor,                                                  desc:t('Meta > 200% — marketing compensa?') },
+              { label:t('ROI Total e por Canal (%)'),            value:roiLabel,                                color:roiColor,                                                  desc:filters.channel ? `Canal: ${filters.channel}` : t('Meta > 200% — marketing compensa?') },
             ],
           },
           {
@@ -735,7 +458,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
             cards: [
               { label:t('NPS Geral (0–10)'),                   value:`${kpis.avgNPS.toFixed(1)}`,             color:cl(kpis.avgNPS,8.5,7),                                     desc:t('Meta > 8,5 — paciente indicaria você?') },
               { label:t('Tempo Médio de Espera (min)'),        value:`${kpis.avgWait.toFixed(0)} min`,        color:cl(kpis.avgWait,12,20,true),                               desc:t('Meta < 12 min em sala de espera') },
-              { label:t('Taxa de Retorno 90 dias (%)'),        value:`${kpis.returnRate.toFixed(1)}%`,        color:cl(kpis.returnRate,40,25),                                 desc:t('Meta > 40% — paciente voltou em 90 dias?') },
+              { label:`${t('Taxa de Retorno')} ${periodReturnLabel} (%)`, value:`${kpis.returnRate.toFixed(1)}%`, color:cl(kpis.returnRate,40,25), desc:`${t('Meta > 40% — paciente voltou em')} ${periodReturnLabel}?` },
               { label:t('SLA de Resposta ao Lead (h)'),        value:`${kpis.slaLeadHours.toFixed(2)}h`,      color:cl(kpis.slaLeadHours,1,2,true),                            desc:t('Meta < 1h para responder o paciente') },
             ],
           },
@@ -782,8 +505,8 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       })()}
 
       {/* ===== FINANCEIRO AVANCADO ===== */}
-      {activeTab === 1 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Financeiro Avancado</h2></div>
+      {activeTab === 2 && (<>
+        <div className="section-header"><h2><span className="orange-bar" /> Financeiro Avançado</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">{moneyTitle('EBITDA')}</div><div className="overview-card-value">{fmt(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitda ?? 0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Margem EBITDA</div><div className="overview-card-value" style={{ color: (financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitdaMargin ?? 0) >= 20 ? 'var(--green)' : 'var(--yellow)' }}>{(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitdaMargin ?? 0).toFixed(1)}%</div></div>
@@ -793,8 +516,8 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
         <FinanceiroModule financeWeeks={financeWeeksForModule} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== AGENDA / OTIMIZAÇÃO ===== */}
-      {activeTab === 2 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Agenda / Otimização</h2></div>
+      {activeTab === 1 && (<>
+        <div className="section-header"><h2><span className="orange-bar" /> Agenda & No-Show</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Total</div><div className="overview-card-value">{kpis.total}</div></div>
           <div className="overview-card"><div className="overview-card-label">Realizadas</div><div className="overview-card-value">{kpis.realized}</div></div>
@@ -805,7 +528,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       </>)}
       {/* ===== MARKETING / UNIT ECONOMICS ===== */}
       {activeTab === 3 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Marketing / Unit Economics</h2></div>
+        <div className="section-header"><h2><span className="orange-bar" /> Marketing & Captação</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Leads</div><div className="overview-card-value">{marketingProWeeks[marketingProWeeks.length-1]?.leadsTotal ?? 0}</div></div>
           <div className="overview-card"><div className="overview-card-label">{moneyTitle('CAC Médio')}</div><div className="overview-card-value" style={{color:'var(--green)'}}>{fmt(marketingChannelStats.reduce((s,r)=>s+r.cac,0)/Math.max(1,marketingChannelStats.length))}</div></div>
@@ -815,7 +538,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
         <MarketingModule weeklyData={weeklyTrend} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== INTEGRAÇÕES ===== */}
-      {activeTab === 4 && (
+      {activeTab === 6 && (
         <IntegrationSection
           plan="PRO"
           totalRecords={kpis.total}
@@ -842,9 +565,9 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
         </tbody></table></div></div>
       </>)}
 
-      {/* ===== OPERACAO & EXPERIENCIA ===== */}
-      {activeTab === 5 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Operacao & Experiencia</h2></div>
+      {/* ===== OPERAÇÃO & UX ===== */}
+      {activeTab === 4 && (<>
+        <div className="section-header"><h2><span className="orange-bar" /> Operação & UX</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">NPS</div><div className="overview-card-value" style={{color:kpis.avgNPS>=8?'var(--green)':'var(--yellow)'}}>{kpis.avgNPS.toFixed(1)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Espera</div><div className="overview-card-value">{kpis.avgWait.toFixed(0)} min</div></div>
@@ -853,9 +576,9 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
         </div>
         <OperacaoUXModule opsWeeks={agendaWeeksForModule} filtered={filtered} kpis={kpis} byProf={byProf} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
-      {/* ===== EQUIPE ===== */}
-      {activeTab === 6 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Equipe</h2></div>
+      {/* ===== CORPO CLÍNICO ===== */}
+      {activeTab === 5 && (<>
+        <div className="section-header"><h2><span className="orange-bar" /> Corpo Clínico</h2></div>
         <div className="chart-card" style={{ marginBottom: 16 }}>
           <div className="chart-card-header">
             <span className="chart-card-title">Adicionar membro da equipe</span>

@@ -319,7 +319,7 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
     const noShowPriority: Priority = (worstNoShowChannel.noShowRateChannel ?? 0) > 35 ? 'P3' : (worstNoShowChannel.noShowRateChannel ?? 0) > 25 ? 'P2' : 'P1';
     const cplWorsened = marketingPrev ? (((current.cpl - marketingPrev.cpl) / Math.max(marketingPrev.cpl, 1)) * 100) > 20 && current.conversion <= (marketingPrev.conversion ?? current.conversion) : false;
     const cplPriority: Priority = cplWorsened ? 'P2' : 'P1';
-    const channelFilterLabel: Record<string, string> = { Whatsapp: 'Whatsapp', Facebook: 'Facebook', OUTROS: 'Outros', Indicacao: 'Indicação' };
+    const channelFilterLabel: Record<string, string> = { Whatsapp: 'Whatsapp', Facebook: 'Facebook', Outros: 'Outros', 'Indicação': 'Indicação' };
     const roiWorst = marketingByChannel.reduce((acc, c) => c.roi < acc.roi ? c : acc, marketingByChannel[0] ?? { name: '-', roi: 0 });
     const selectedChannelRoi = filters.channel
       ? (marketingByChannel.find(c => c.name === filters.channel) ?? roiWorst)
@@ -377,7 +377,7 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
     ];
   }, [opsCurrent, kpis.realized, periodReturnLabel]);
 
-  const showFilterBar = activeTab !== 4 && activeTab !== 5;
+  const showFilterBar = activeTab !== 5;
 
   return (
     <div className="animate-fade-in" key={activeTab}>
@@ -480,9 +480,9 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
           {(() => {
             const CHANNEL_DISPLAY: Record<string, string> = {
               Telefone: 'Whatsapp', WhatsApp: 'Whatsapp', Whatsapp: 'Whatsapp',
-              Organico: 'Facebook', Facebook: 'Facebook',
-              Presencial: 'Outros', OUTROS: 'Outros', Outros: 'Outros',
-              Indicacao: 'Indicação', 'Indicação': 'Indicação',
+              Facebook: 'Facebook',
+              Presencial: 'Outros', Outros: 'Outros',
+              'Indicação': 'Indicação',
               Google: 'Google', Instagram: 'Instagram',
             };
             const counts = new Map<string, number>();

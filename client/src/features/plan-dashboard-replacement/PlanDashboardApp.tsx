@@ -147,7 +147,7 @@ function resolveExportRole(user: unknown): string {
 
 const sidebarMenus: Record<Plan, { items: string[] }> = {
   ESSENTIAL: { items: ['Visão CEO', 'Agenda & No-Show', 'Financeiro Executivo', 'Marketing & Captação', 'Operação & UX', 'Integrações'] },
-  PRO: { items: ['Visão CEO', 'Financeiro Avançado', 'Agenda/No-Show', 'Marketing', 'Integrações', 'Operação & Experiência', 'Equipe'] },
+  PRO: { items: ['Visão CEO', 'Agenda & No-Show', 'Financeiro Avançado', 'Marketing & Captação', 'Operação & UX', 'Corpo Clínico', 'Integrações'] },
   ENTERPRISE: { items: ['Visão CEO', 'Financeiro — Investidor', 'Agenda/No-Show', 'Marketing', 'Multi-Unidade', 'Integrações', 'Operação & Experiência', 'Equipe', 'Governança'] },
 };
 
@@ -155,7 +155,7 @@ const i18n: Record<Lang, Record<string, string>> = {
   PT: {
     painelEssencial: 'Painel Start', painelPro: 'Painel Pro', painelEnterprise: 'Painel Enterprise',
     subtitleEssencial: 'Painel executivo de indicadores para gestão de clínicas',
-    subtitlePro: 'Otimização inteligente por profissional, serviço e canal',
+    subtitlePro: 'Inteligência operacional para decisões de alta gestão',
     subtitleEnterprise: 'Inteligência de rede multi-unidade para investidores',
     dadosVivo: 'Dados ao vivo', help: 'Ajuda', atualizar: 'Atualizar', configuracoes: 'Configurações',
     exportCsv: 'Exportar CSV', exportPdf: 'Exportar PDF', sair: 'Sair',

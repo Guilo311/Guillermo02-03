@@ -30,12 +30,12 @@ export default function FilterBar({ filters, onChange, showUnit = false, options
   const { t } = useTranslation();
   const activeFilterCount = [filters.channel, filters.professional, filters.procedure, filters.status, filters.unit, filters.severity].filter(Boolean).length;
   const orderedChannelOptions = [
-    { value: "Indicacao", label: t("Indicação") },
+    { value: "Indicação", label: t("Indicação") },
     { value: "Google", label: "Google" },
     { value: "Instagram", label: "Instagram" },
     { value: "Facebook", label: "Facebook" },
     { value: "Whatsapp", label: "Whatsapp" },
-    { value: "OUTROS", label: t("Outros") },
+    { value: "Outros", label: t("Outros") },
   ];
 
   const update = (key: keyof Filters, value: string) => {

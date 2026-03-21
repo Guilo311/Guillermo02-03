@@ -174,9 +174,6 @@ function MD({ text }: { text: string }) {
       })}
     </div>
   );
-
-  if (typeof document === 'undefined') return null;
-  return createPortal(widget, document.body);
 }
 
 // ─── TypingDots ───────────────────────────────────────────────────────────────
@@ -251,7 +248,7 @@ function GLXIcon() {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function AIAssistantModule({ kpis, fmt }: Props) {
+export function AIAssistantModule({ kpis, fmt }: Props): React.ReactElement | null {
   const [isOpen, setIsOpen]       = useState(false);
   // Start empty; decrypted key loaded async in useEffect below
   const [apiKey, setApiKey]       = useState<string>('');
@@ -715,4 +712,7 @@ export function AIAssistantModule({ kpis, fmt }: Props) {
       </button>
     </>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(widget, document.body);
 }

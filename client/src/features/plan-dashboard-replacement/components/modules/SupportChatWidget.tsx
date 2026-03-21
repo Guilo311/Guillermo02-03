@@ -47,7 +47,6 @@ type Project = {
 const STORAGE_KEY = 'glx_support_chat_history_v1';
 const PROJECTS_KEY = 'glx_projects_v1';
 const PROFILE_KEY = 'glx-dashboard-profile';
-const SUPPORT_AVATAR_SRC = '/images/alex-toggle.png';
 const QUICK_REPLIES = ['Como exporto PDF?', 'Onde ficam os filtros?', 'Como trocar o periodo?'];
 
 function readDashboardProfile(): { name: string; avatar: string } {
@@ -77,7 +76,7 @@ function nowIso() {
 function getGreeting(lang: 'pt' | 'en' | 'es' = 'pt') {
   const hour = new Date().getHours();
   const greetings = {
-    pt: hour < 12 ? 'Como posso te ajudar esta manhã?' : hour < 18 ? 'Como posso te ajudar esta tarde?' : 'Como posso te ajudar esta noite?',
+    pt: 'Olá, como posso te ajudar?',
     en: hour < 12 ? 'How can I help you this morning?' : hour < 18 ? 'How can I help you this afternoon?' : 'How can I help you this evening?',
     es: hour < 12 ? '¿Cómo puedo ayudarte esta mañana?' : hour < 18 ? '¿Cómo puedo ayudarte esta tarde?' : '¿Cómo puedo ayudarte esta noche?',
   };
@@ -1057,11 +1056,19 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                   gap: 10,
                 }}
               >
-                <img
-                  src="/images/logo-badge.jpg"
-                  alt="GLX"
-                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                />
+                {dashProfile.avatar ? (
+                  <img
+                    src={dashProfile.avatar}
+                    alt={dashProfile.name}
+                    style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                ) : (
+                  <img
+                    src="/images/logo-badge.jpg"
+                    alt="GLX"
+                    style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                )}
                 <span style={{ color: DARK.muted, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {dashProfile.name}
                 </span>
@@ -1124,15 +1131,18 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
+                title="Minimizar"
                 style={{
                   width: 34, height: 34, borderRadius: '50%',
                   border: `1px solid ${DARK.border}`, background: DARK.surface,
                   color: DARK.muted, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, flexShrink: 0,
+                  flexShrink: 0,
                 }}
               >
-                ✕
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
               </button>
             </div>
 
@@ -1196,19 +1206,38 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                         key={message.id}
                         style={{
                           alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
-                          maxWidth: '82%',
-                          borderRadius: 16,
-                          padding: '10px 14px',
-                          fontSize: 13,
-                          lineHeight: 1.6,
-                          background: message.content === '__CREDIT_ERROR__'
-                            ? 'rgba(239,68,68,0.12)'
-                            : message.role === 'user' ? DARK.accent : DARK.surface,
-                          color: message.role === 'user' ? '#fff' : DARK.text,
-                          whiteSpace: 'pre-line',
-                          border: message.content === '__CREDIT_ERROR__' ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                          display: 'flex',
+                          flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
+                          alignItems: 'flex-end',
+                          gap: 6,
+                          maxWidth: '86%',
                         }}
                       >
+                        {message.role === 'user' && (
+                          dashProfile.avatar ? (
+                            <img src={dashProfile.avatar} alt={dashProfile.name}
+                              style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                          ) : (
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: DARK.accent, flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 700 }}>
+                              {dashProfile.name.charAt(0).toUpperCase()}
+                            </div>
+                          )
+                        )}
+                        <div
+                          style={{
+                            borderRadius: 16,
+                            padding: '10px 14px',
+                            fontSize: 13,
+                            lineHeight: 1.6,
+                            background: message.content === '__CREDIT_ERROR__'
+                              ? 'rgba(239,68,68,0.12)'
+                              : message.role === 'user' ? DARK.accent : DARK.surface,
+                            color: message.role === 'user' ? '#fff' : DARK.text,
+                            whiteSpace: 'pre-line',
+                            border: message.content === '__CREDIT_ERROR__' ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                          }}
+                        >
                         {message.content === '__CREDIT_ERROR__' ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <span style={{ color: '#f87171', fontWeight: 600, fontSize: 13 }}>
@@ -1245,6 +1274,7 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                         ) : (
                           message.role === 'assistant' ? stripMarkdown(message.content) : message.content
                         )}
+                        </div>
                       </div>
                     ))}
                     {showJumpToBottom ? (
@@ -1685,8 +1715,8 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
         type="button"
         onClick={() => setIsOpen((current) => !current)}
         style={{
-          width: 68,
-          height: 68,
+          width: 88,
+          height: 88,
           borderRadius: '50%',
           border: `2px solid ${DARK.border}`,
           background: DARK.sidebar,
