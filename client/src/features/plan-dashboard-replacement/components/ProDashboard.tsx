@@ -9,7 +9,6 @@ import { AgendaNoShowModule } from './modules/AgendaNoShowModule';
 import { FinanceiroModule } from './modules/FinanceiroModule';
 import { MarketingModule } from './modules/MarketingModule';
 import { OperacaoUXModule } from './modules/OperacaoUXModule';
-import { AIAssistantModule } from './modules/AIAssistantModule';
 import {
   type Appointment, Filters, getAllAppointments, applyFilters, computeKPIs,
   computeByProfessional, computeByChannel, computeByProcedure,
@@ -778,8 +777,6 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
         </div>
       </>)}
 
-      {/* ===== FLOATING AI ASSISTANT ===== */}
-      <AIAssistantModule kpis={kpis} fmt={fmt} />
 
       {/* ── KPI INFO MODAL ── */}
       {kpiModal && (
